@@ -164,6 +164,21 @@ main {
 .btn-text { white-space: nowrap; }
 .btn-loader { width: 24px; height: 24px; }
 
+/* SHARE BUTTON */
+.share-wrapper { text-align: center; margin-top: 16px; position: relative; }
+.share-btn {
+  background: transparent; border: none; color: var(--gray-500); font-size: 14px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: color 0.2s;
+  width: 100%; padding: 8px;
+}
+.share-btn:hover { color: var(--brand-ink); }
+.share-btn svg { width: 16px; height: 16px; }
+.share-tooltip {
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  background: var(--gray-900); color: white; padding: 6px 12px; border-radius: 8px;
+  font-size: 12px; margin-bottom: 4px; animation: fadeUp 0.2s; white-space: nowrap; font-weight: 600;
+}
+
 /* ERROR MSG */
 .error-msg { text-align: center; color: #ef4444; font-size: 14px; font-weight: 600; margin-top: 16px; background: #fef2f2; padding: 12px; border-radius: 12px; }
 .hidden { display: none !important; }

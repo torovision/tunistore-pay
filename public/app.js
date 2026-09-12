@@ -19,6 +19,10 @@ const resultTitle = document.getElementById('resultTitle');
 const resultDesc = document.getElementById('resultDesc');
 const infoCard = document.getElementById('infoCard');
 
+const shareWrapper = document.getElementById('shareWrapper');
+const btnShare = document.getElementById('btnShare');
+const shareTooltip = document.getElementById('shareTooltip');
+
 const payModal = document.getElementById('payModal');
 const payIframe = document.getElementById('payIframe');
 const modalUrl = document.getElementById('modalUrl');
@@ -111,11 +115,13 @@ btnPay.addEventListener('click', async () => {
 
     currentShortId = data.shortId;
 
-    // Show amount preview
+    // Show amount preview and share button
     const amountDT = (data.amount / 1000).toFixed(0);
     amountValue.textContent = `${amountDT} DT`;
     amountPreview.classList.remove('hidden');
+    shareWrapper.classList.remove('hidden');
     gsap.fromTo(amountPreview, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3 });
+    gsap.fromTo(shareWrapper, { opacity: 0 }, { opacity: 1, duration: 0.3, delay: 0.1 });
 
     setLoading(false);
 
@@ -170,6 +176,33 @@ btnCloseModal.addEventListener('click', () => {
     startStatusPolling(currentShortId);
   }
 });
+
+// --- SHARE LOGIC ---
+btnShare.addEventListener('click', async () => {
+  if (!currentShortId) return;
+  const shareUrl = `${window.location.origin}${window.location.pathname}?link=${currentShortId}`;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Paiement TunPay',
+        text: 'Payez en ligne en toute sécurité via TunPay.',
+        url: shareUrl
+      });
+    } catch (e) {
+      copyToClipboard(shareUrl);
+    }
+  } else {
+    copyToClipboard(shareUrl);
+  }
+});
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    shareTooltip.classList.remove('hidden');
+    setTimeout(() => shareTooltip.classList.add('hidden'), 2000);
+  });
+}
 
 // --- PAYMENT STATUS POLLING ---
 function showVerifying() {
@@ -249,6 +282,7 @@ window.resetFlow = function() {
   currentShortId = null;
   linkInput.value = '';
   amountPreview.classList.add('hidden');
+  shareWrapper.classList.add('hidden');
   errorMsg.classList.add('hidden');
   btnPay.disabled = true;
   btnText.textContent = 'Payer maintenant';
