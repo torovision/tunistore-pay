@@ -95,7 +95,7 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n  \x1b[1mTunistore Pay (Express Stripe Edition)\x1b[0m`);
+  console.log(`\n  \x1b[1mTunPay (Express Stripe Edition)\x1b[0m`);
   console.log(`  \x1b[2m────────────────────────────────────\x1b[0m`);
   console.log(`  Local:   \x1b[36mhttp://localhost:${PORT}/\x1b[0m`);
   console.log(`  Admin:   \x1b[36mhttp://localhost:${PORT}/payx\x1b[0m`);
