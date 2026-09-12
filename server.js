@@ -91,7 +91,7 @@ app.post('/api/resolve-link', async (req, res) => {
   const shortId = extractShortId(link);
 
   if (!shortId) {
-    return res.status(400).json({ error: 'Lien invalide. Collez un lien Kashy valide.' });
+    return res.status(400).json({ error: 'Lien invalide. Collez un lien de paiement valide.' });
   }
 
   try {
