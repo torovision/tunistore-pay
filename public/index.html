@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TunPay - Sécurisé</title>
+  <title>TunPay — Solution de paiement en ligne</title>
+  <meta name="description" content="TunPay : payez en ligne en Tunisie de manière sécurisée via ClicToPay. Collez votre lien de paiement et réglez en quelques secondes.">
   
-  <!-- Fonts: Plus Jakarta Sans for that pristine Stripe look -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -30,54 +31,44 @@
       </div>
     </div>
 
-    <!-- The Glassmorphic Payment Container -->
-    <div class="card gsap-card">
-      
-      <!-- 3D Floating Credit Card -->
-      <div class="card-3d-wrapper gsap-3d" data-tilt data-tilt-max="15" data-tilt-speed="400" data-tilt-glare="true" data-tilt-max-glare="0.5">
-        <div class="card-3d">
-          <div class="card-3d-chip"></div>
-          <div class="card-3d-wifi">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
-          </div>
-          <div class="card-3d-name">Flen Ben Foulen</div>
-          <div class="card-3d-logo">ClicToPay</div>
-        </div>
-      </div>
+    <!-- HERO SECTION -->
+    <div class="hero gsap-card">
+      <p class="hero-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Paiement sécurisé via Monétique Tunisie
+      </p>
+      <h1 class="hero-title">Solution de paiement<br><span class="hero-highlight">en ligne.</span></h1>
+      <p class="hero-subtitle">Collez votre lien de paiement Kashy ci-dessous et payez en toute sécurité via ClicToPay.</p>
+    </div>
 
-      <div class="card-header gsap-content">
-        <h1 class="card-title">Effectuer un paiement</h1>
-        <p class="card-desc">Saisissez le montant de votre recharge.</p>
-      </div>
-
-      <div class="card-body gsap-content">
-        <div class="apple-amount-display">
-          <div class="input-wrapper">
-            <input type="tel" class="val-input" id="amountInput" value="10" autocomplete="off">
-            <span class="currency-label">DT</span>
-          </div>
-          <div id="suggestionBox" class="suggestion-box hidden"></div>
-          
-          <button class="edit-btn" id="btnOpenSheet">
-            Voir les options
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        </div>
-
-        <button class="btn-primary" id="btnPay" disabled>
-          <span class="btn-text" id="btnText">Continuer</span>
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          <div class="btn-loader hidden" id="btnLoader"></div> <!-- Lottie target -->
-        </button>
-        <div id="errorMsg" class="error-msg hidden">Ce lien est expiré.</div>
+    <!-- PAYMENT CARD -->
+    <div class="card gsap-card" id="paymentCard">
+      <div class="card-body" style="padding: 32px;">
         
-        <div class="share-wrapper gsap-content">
-          <button class="share-btn" id="btnShare">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Partager le lien de paiement
+        <!-- Link Input -->
+        <label class="link-label" for="linkInput">Lien de paiement</label>
+        <div class="link-input-wrapper">
+          <svg class="link-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          <input type="text" id="linkInput" class="link-input" placeholder="Ex: https://app.kashy.tn/0xqgxm" autocomplete="off" spellcheck="false">
+          <button class="link-paste-btn" id="btnPaste" title="Coller">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           </button>
-          <span class="share-tooltip hidden" id="shareTooltip">Lien copié !</span>
         </div>
+
+        <!-- Amount Preview (shown after link is resolved) -->
+        <div class="amount-preview hidden" id="amountPreview">
+          <div class="amount-preview-label">Montant à payer</div>
+          <div class="amount-preview-value" id="amountValue">0 DT</div>
+        </div>
+
+        <!-- Pay Button -->
+        <button class="btn-primary" id="btnPay" disabled>
+          <span class="btn-text" id="btnText">Payer maintenant</span>
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <div class="btn-loader hidden" id="btnLoader"></div>
+        </button>
+
+        <div id="errorMsg" class="error-msg hidden"></div>
       </div>
 
       <div class="trust gsap-content">
@@ -96,38 +87,34 @@
       </div>
     </div>
 
+    <!-- RESULT SCREEN (Success / Fail) — hidden by default -->
+    <div class="result-screen hidden" id="resultScreen">
+      <div class="result-icon" id="resultIcon"></div>
+      <h2 class="result-title" id="resultTitle"></h2>
+      <p class="result-desc" id="resultDesc"></p>
+      <button class="btn-primary result-btn" id="resultBtn" onclick="resetFlow()">
+        <span class="btn-text">Nouveau paiement</span>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
     <!-- Info Box for Instructions -->
-    <div class="info-card gsap-content">
+    <div class="info-card gsap-content" id="infoCard">
       <div class="info-header">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
         Comment payer ? / How to pay? / كيفاش نخلص ؟
       </div>
       <div class="info-body">
-        <p><strong>Français :</strong> Saisissez le montant, cliquez sur « Continuer », puis entrez les coordonnées de votre carte bancaire en toute sécurité sur la page de ClicToPay.</p>
-        <p style="margin-top: 12px;"><strong>English :</strong> Enter the amount, click "Continuer", then securely provide your credit card details on the ClicToPay page.</p>
+        <p><strong>Français :</strong> Collez le lien de paiement que vous avez reçu, cliquez sur « Payer maintenant », puis entrez les coordonnées de votre carte bancaire en toute sécurité sur la page de ClicToPay.</p>
+        <p style="margin-top: 12px;"><strong>English :</strong> Paste the payment link you received, click "Payer maintenant", then securely enter your credit card details on the ClicToPay page.</p>
         <p dir="rtl" style="text-align: right; margin-top: 12px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-          <strong>تونسي :</strong> دخّل المبلغ اللي تحب تخلصو وانزل على "Continuer". مبعد، دخّل معطيات البطاقة البنكية متاعك في صفحة ClicToPay وانت متهني (آمن 100%).
+          <strong>تونسي :</strong> ألصق رابط الدفع اللي وصلك، أنقر على "Payer maintenant"، ومبعد دخّل معطيات البطاقة البنكية متاعك في صفحة ClicToPay وانت متهني (آمن 100%).
         </p>
       </div>
     </div>
   </main>
 
   <footer>&copy; 2026 TunPay &middot; Propulsé par Monétique Tunisie</footer>
-
-  <!-- IOS AMOUNT SELECTOR SHEET -->
-  <div class="ios-sheet-overlay" id="amountSheetOverlay">
-    <div class="ios-sheet">
-      <div class="ios-sheet-header">
-        <div class="ios-sheet-title">Sélectionner un montant</div>
-        <button class="ios-sheet-close" id="btnCloseSheet">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div class="ios-sheet-list" id="amountsList">
-        <!-- Rendered by JS -->
-      </div>
-    </div>
-  </div>
 
   <!-- PAY MODAL -->
   <div class="modal-overlay" id="payModal">
@@ -166,7 +153,6 @@
 
   <!-- Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
   <script src="/app.js"></script>
 </body>
