@@ -108,9 +108,9 @@ btnPay.addEventListener('click', async () => {
     });
     const data = await res.json();
 
-    if (!res.ok) throw new Error(data.error || 'Lien invalide.');
+    if (!res.ok) throw new Error(data.error || 'Code invalide.');
     if (data.status !== 'INITIATED' && data.status !== 'pending') {
-      throw new Error('Ce lien est expiré ou a déjà été utilisé.');
+      throw new Error('Ce code est expiré ou a déjà été utilisé.');
     }
 
     currentShortId = data.shortId;
