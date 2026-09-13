@@ -7,7 +7,7 @@ import 'dotenv/config';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3010;
 const LINKS_FILE = join(__dirname, 'links.json');
-const DEFAULT_AUTH_TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTMxY2U3ZjliZTgyNTZjMzY1Y2JmZGQiLCJyb2xlIjoiY2xpZW50Iiwic3RhdHVzIjoidmVyaWZpZWQiLCJlbWFpbCI6ImNoaWhlYmVsb3VuaTZAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrMjE2NTM3NzI3MDciLCJpYXQiOjE3ODkzMTc5ODEsImV4cCI6MTc4OTMxOTc4MX0.cI0Er6M3hqcOe-_Hx_-tJpiwCn6sI7CvFBqRktFjMY8';
+const DEFAULT_AUTH_TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTMxY2U3ZjliZTgyNTZjMzY1Y2JmZGQiLCJyb2xlIjoiY2xpZW50Iiwic3RhdHVzIjoidmVyaWZpZWQiLCJlbWFpbCI6ImNoaWhlYmVsb3VuaTZAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrMjE2NTM3NzI3MDciLCJpYXQiOjE3ODkzMTk2NTEsImV4cCI6MTc4OTMyMTQ1MX0.oDPeccCVmwGanTG3dwP9tDBFIuQbxhseATPzPkuzJbU';
 
 const app = express();
 app.use(express.json());
