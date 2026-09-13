@@ -46,7 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const tl = gsap.timeline();
   tl.to('.gsap-header', { opacity: 1, duration: 0.8, ease: "power2.out" })
     .fromTo('.logo-pay-pill', { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55, ease: "back.out(2.5)" }, "-=0.5")
+    .fromTo('.secure-tag', { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(2)" }, "-=0.4")
     .to('.gsap-card', { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.7)" }, "-=0.4")
+    .fromTo('.hero-badge', { scale: 0.7, opacity: 0, y: -10 }, { scale: 1, opacity: 1, y: 0, duration: 0.55, ease: "back.out(2)" }, "-=0.6")
     .fromTo('.gsap-content', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power2.out" }, "-=0.4");
 
   // Check URL parameter for direct link
