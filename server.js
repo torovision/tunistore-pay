@@ -304,11 +304,12 @@ async function getPuppeteerPage() {
     await puppeteerPage.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
     );
-    // Block images/css/fonts to save bandwidth on Render
+    // Allow CSS & JS so Next.js UI renders completely; only block heavy media & analytics
     await puppeteerPage.setRequestInterception(true);
     puppeteerPage.on('request', (req) => {
       const type = req.resourceType();
-      if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+      const url = req.url();
+      if (type === 'media' || url.includes('google-analytics') || url.includes('hotjar') || url.includes('sentry.io')) {
         req.abort();
       } else {
         req.continue();
