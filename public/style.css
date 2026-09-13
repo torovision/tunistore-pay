@@ -95,13 +95,13 @@ body {
 }
 
 .logo-text {
-  font-size: 25px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--brand-ink);
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 2px;
 }
 
 .logo-pay-pill {
