@@ -152,6 +152,16 @@ function handleLinkInput() {
   const isValidCode = val.length >= 4;
 
   if (parsedNum !== null) {
+    if (parsedNum > 500) {
+      btnPay.disabled = true;
+      btnText.textContent = 'Payer maintenant';
+      amountPreview.classList.add('hidden');
+      shareWrapper.classList.add('hidden');
+      errorMsg.textContent = 'Le montant maximum autorisé par transaction est de 500 DT.';
+      errorMsg.classList.remove('hidden');
+      return;
+    }
+
     btnPay.disabled = false;
     btnText.textContent = 'Payer maintenant';
     // Instantly format & display amount preview locally (no Kashy API call during typing = no duplicate link)
@@ -194,12 +204,26 @@ async function autoResolvePreview(input) {
     });
     if (res.ok) {
       const data = await res.json();
+      if (data.amount > 500000) {
+        errorMsg.textContent = 'Le montant de ce lien dépasse le maximum autorisé de 500 DT.';
+        errorMsg.classList.remove('hidden');
+        btnPay.disabled = true;
+        amountPreview.classList.add('hidden');
+        shareWrapper.classList.add('hidden');
+        return;
+      }
       currentShortId = data.shortId;
       amountValue.textContent = formatTnd(data.amount);
       amountPreview.classList.remove('hidden');
       shareWrapper.classList.remove('hidden');
       gsap.fromTo(amountPreview, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.3 });
       gsap.fromTo(shareWrapper, { opacity: 0 }, { opacity: 1, duration: 0.3, delay: 0.1 });
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      if (errData.error) {
+        errorMsg.textContent = errData.error;
+        errorMsg.classList.remove('hidden');
+      }
     }
   } catch (e) {}
 }
@@ -215,6 +239,13 @@ btnPay.addEventListener('click', async () => {
 
   const parsedNum = parseAmountInput(input);
   const isNumericAmount = parsedNum !== null;
+
+  if (isNumericAmount && parsedNum > 500) {
+    setLoading(false);
+    errorMsg.textContent = 'Le montant maximum autorisé par transaction est de 500 DT.';
+    errorMsg.classList.remove('hidden');
+    return;
+  }
 
   try {
     let data;

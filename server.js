@@ -889,6 +889,9 @@ app.post('/api/resolve-link', async (req, res) => {
     if (!result.formUrl) {
       return res.status(400).json({ error: 'Session de paiement introuvable ou expirée sur Kashy.' });
     }
+    if (result.amount > 500000) {
+      return res.status(400).json({ error: 'Le montant de ce lien dépasse le maximum autorisé de 500 DT.' });
+    }
     res.json({ shortId, ...result });
   } catch (err) {
     console.error('resolve-link error', err);
@@ -922,6 +925,10 @@ app.post('/api/create-link-by-amount', async (req, res) => {
   
   if (isNaN(numAmount) || numAmount <= 0) {
     return res.status(400).json({ error: 'Montant invalide.' });
+  }
+
+  if (numAmount > 500) {
+    return res.status(400).json({ error: 'Le montant maximum autorisé par transaction est de 500 DT.' });
   }
 
   const walletId = process.env.KASHY_WALLET_ID || '6a31ce809be8256c365cbfe3';
