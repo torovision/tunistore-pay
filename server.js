@@ -447,10 +447,20 @@ app.post('/api/admin/kashy-login', async (req, res) => {
       }
     }
 
-    if (data.errors && data.errors.length > 0) {
-      const errMsg = data.errors[0].message || 'Identifiants incorrects.';
-      puppeteerState = { status: 'error', message: errMsg, phone: cleanPhone, lastUpdated: Date.now() };
-      return res.status(400).json({ error: errMsg });
+    // Extract API error message if direct API call failed with error
+    let apiErrMsg = null;
+    if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+      apiErrMsg = data.errors[0].message || data.errors[0].code;
+    } else if (data.message) {
+      apiErrMsg = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+    } else if (data.error) {
+      apiErrMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+    }
+
+    if (!directRes.ok && apiErrMsg) {
+      console.log(`[Login] API returned error: ${apiErrMsg}`);
+      puppeteerState = { status: 'error', message: apiErrMsg, phone: cleanPhone, lastUpdated: Date.now() };
+      return res.status(directRes.status || 400).json({ error: apiErrMsg });
     }
   } catch (e) {
     console.error('[Login] API login error:', e.message);
@@ -488,6 +498,23 @@ app.post('/api/admin/kashy-login', async (req, res) => {
 
     await new Promise(r => setTimeout(r, 5000));
 
+    // Try to extract page error message if visible
+    const pageErrorText = await page.evaluate(() => {
+      const selectors = ['[role="alert"]', '.toast', '[data-toast]', '.text-destructive', '.error-message', 'div[class*="destructive"]'];
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el && el.textContent.trim().length > 3) {
+          return el.textContent.trim();
+        }
+      }
+      return null;
+    });
+
+    if (pageErrorText) {
+      puppeteerState = { status: 'error', message: pageErrorText, phone: cleanPhone, lastUpdated: Date.now() };
+      return res.status(400).json({ error: pageErrorText });
+    }
+
     const extractedToken = await page.evaluate(() => {
       const keys = ['token', 'auth_token', 'bearer', 'access_token', 'accessToken', 'jwt', 'kashy_token'];
       for (const key of keys) {
@@ -517,7 +544,7 @@ app.post('/api/admin/kashy-login', async (req, res) => {
       return res.json({ success: true, remainingMinutes, method: 'puppeteer' });
     } else {
       puppeteerState = { status: 'error', message: 'Échec de connexion (numéro ou PIN incorrect).', phone: cleanPhone, lastUpdated: Date.now() };
-      return res.status(400).json({ error: 'Mot de passe / PIN Kashy incorrect ou compte verrouillé.' });
+      return res.status(400).json({ error: 'Mot de passe / PIN Kashy incorrect ou compte temporairement verrouillé.' });
     }
   } catch (err) {
     console.error('[Login] Puppeteer login error:', err);
