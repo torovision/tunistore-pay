@@ -101,13 +101,16 @@ function handleLinkInput() {
 }
 
 async function autoResolvePreview(input) {
-  // Only auto-resolve if user has interacted (not during silent demo)
   if (!userInteractedWithInput) return;
+  const isNumericAmount = /^\d+(\.\d+)?(\s*DT)?$/i.test(input.trim());
+  const endpoint = isNumericAmount ? '/api/create-link-by-amount' : '/api/resolve-link';
+  const payload = isNumericAmount ? { amountDT: parseFloat(input) } : { link: input };
+
   try {
-    const res = await fetch('/api/resolve-link', {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ link: input })
+      body: JSON.stringify(payload)
     });
     if (res.ok) {
       const data = await res.json();
@@ -119,31 +122,33 @@ async function autoResolvePreview(input) {
       gsap.fromTo(amountPreview, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.3 });
       gsap.fromTo(shareWrapper, { opacity: 0 }, { opacity: 1, duration: 0.3, delay: 0.1 });
     }
-  } catch (e) {
-    // Ignore preview error, pay button handles explicit errors
-  }
+  } catch (e) {}
 }
 
 // --- PAYMENT FLOW ---
 btnPay.addEventListener('click', async () => {
-  const link = linkInput.value.trim();
-  if (!link) return;
+  const input = linkInput.value.trim();
+  if (!input) return;
 
   // Loading state
   setLoading(true);
   errorMsg.classList.add('hidden');
 
+  const isNumericAmount = /^\d+(\.\d+)?(\s*DT)?$/i.test(input);
+  const endpoint = isNumericAmount ? '/api/create-link-by-amount' : '/api/resolve-link';
+  const payload = isNumericAmount ? { amountDT: parseFloat(input) } : { link: input };
+
   try {
-    const res = await fetch('/api/resolve-link', {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ link })
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
 
-    if (!res.ok) throw new Error(data.error || 'Code invalide.');
+    if (!res.ok) throw new Error(data.error || 'Code ou montant invalide.');
     if (data.status !== 'INITIATED' && data.status !== 'pending') {
-      throw new Error('Ce code est expiré ou a déjà été utilisé.');
+      throw new Error('Ce paiement a déjà été traité.');
     }
 
     currentShortId = data.shortId;

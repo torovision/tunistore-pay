@@ -121,6 +121,54 @@ app.get('/api/check-status/:shortId', async (req, res) => {
   }
 });
 
+// NEW: Create or resolve link by dynamic amount (e.g. 25 DT)
+app.post('/api/create-link-by-amount', async (req, res) => {
+  const { amountDT } = req.body;
+  const numAmount = parseFloat(amountDT);
+  
+  if (isNaN(numAmount) || numAmount <= 0) {
+    return res.status(400).json({ error: 'Montant invalide.' });
+  }
+
+  const walletId = process.env.KASHY_WALLET_ID || '6a31ce809be8256c365cbfe3';
+  const authToken = process.env.KASHY_AUTH_TOKEN;
+
+  if (authToken) {
+    try {
+      const amountMillimes = Math.round(numAmount * 1000);
+      const r = await fetch('https://api.kashy.tn/api/v1/payments/links', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          walletId,
+          amount: amountMillimes,
+          description: `Paiement ${numAmount} DT via TunPay`
+        })
+      });
+
+      if (r.ok) {
+        const data = await r.json();
+        const shortId = data.shortId || data.id || data.code;
+        if (shortId) {
+          const apiRes = await handleApi(shortId);
+          return res.json({ shortId, ...apiRes, amount: amountMillimes });
+        }
+      }
+    } catch(e) {
+      console.error('Kashy dynamic link creation error:', e);
+    }
+  }
+
+  // Fallback: search pre-saved amount links or fallback session
+  const links = getLinks();
+  const shortId = links[numAmount.toString()] || links[`${Math.round(numAmount)}`] || 'xxxx';
+  const apiRes = await handleApi(shortId);
+  res.json({ shortId, ...apiRes, amount: Math.round(numAmount * 1000) });
+});
+
 // OLD: Resolve by amount (backward compatible)
 app.get('/api/resolve-amount/:amount', async (req, res) => {
   const amountStr = req.params.amount;
