@@ -44,35 +44,48 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-decoration: none;
   user-select: none;
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
-.logo:hover {
-  transform: translateY(-1px);
-}
-.logo-icon-box {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+
+.logo-icon-wrap {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  box-shadow: 0 6px 16px -2px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
 }
-.logo:hover .logo-icon-box {
-  box-shadow: 0 12px 28px -4px rgba(202, 255, 0, 0.35), 0 0 0 2px rgba(202, 255, 0, 0.4);
-  transform: scale(1.05) rotate(-2deg);
+
+.logo:hover .logo-icon-wrap {
+  transform: translateY(-2px) rotate(-5deg) scale(1.1);
+  box-shadow: 0 10px 24px -2px rgba(202, 255, 0, 0.4), 0 0 0 2px rgba(202, 255, 0, 0.45);
 }
-.logo-icon-box svg {
-  width: 44px;
-  height: 44px;
+
+.logo-icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+.logo-check-path {
+  transition: stroke-dashoffset 0.35s ease;
+}
+
+.logo:hover .logo-check-path {
+  animation: checkDraw 0.4s ease-out forwards;
+}
+
+@keyframes checkDraw {
+  0% { stroke-dasharray: 20; stroke-dashoffset: 20; }
+  100% { stroke-dasharray: 20; stroke-dashoffset: 0; }
 }
 
 .logo-text-wrapper {
@@ -82,30 +95,54 @@ body {
 }
 
 .logo-text {
-  font-size: 24px;
+  font-size: 25px;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--brand-ink);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .logo-pay-pill {
-  background: var(--brand-green);
+  position: relative;
+  background: linear-gradient(135deg, #caff00 0%, #a3e635 100%);
   color: var(--brand-ink);
   font-size: 19px;
   font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 8px;
+  padding: 2px 9px;
+  border-radius: 9px;
   letter-spacing: -0.03em;
-  box-shadow: 0 4px 12px rgba(202, 255, 0, 0.35);
-  display: inline-block;
+  box-shadow: 0 4px 14px rgba(202, 255, 0, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   transform: rotate(-1.5deg);
-  transition: transform 0.2s ease;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
 }
+
+.logo-pay-pill::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: skewX(-20deg);
+}
+
+.logo:hover .logo-pay-pill::after {
+  animation: logoShimmer 0.75s ease-out;
+}
+
+@keyframes logoShimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
 .logo:hover .logo-pay-pill {
-  transform: rotate(0deg) scale(1.05);
+  transform: rotate(0deg) scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 24px rgba(202, 255, 0, 0.6);
 }
 
 .logo-tagline {
@@ -115,6 +152,11 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-top: 3px;
+  transition: color 0.25s ease;
+}
+
+.logo:hover .logo-tagline {
+  color: var(--brand-ink);
 }
 .secure-tag {
   display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--brand-ink);
