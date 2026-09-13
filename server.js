@@ -208,14 +208,38 @@ function findProjectChromeExecutable() {
   return null;
 }
 
+function isBrowserConnected(browser) {
+  if (!browser) return false;
+  try {
+    if (typeof browser.isConnected === 'function') return browser.isConnected();
+    if (typeof browser.connected === 'boolean') return browser.connected;
+    if (typeof browser.process === 'function') return browser.process() !== null;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function isPageOpen(page) {
+  if (!page) return false;
+  try {
+    if (typeof page.isClosed === 'function') return !page.isClosed();
+    if (typeof page.isClosed === 'boolean') return !page.isClosed;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function getPuppeteerPage() {
-  if (!puppeteerBrowser || !puppeteerBrowser.isConnected()) {
-    let puppeteer;
+  if (!isBrowserConnected(puppeteerBrowser)) {
+    let puppeteerModule;
     try {
-      puppeteer = await import('puppeteer');
+      puppeteerModule = await import('puppeteer');
     } catch (e) {
       throw new Error("Puppeteer n'est pas installé sur le serveur.");
     }
+    const puppeteer = puppeteerModule.default || puppeteerModule;
 
     const launchArgs = [
       '--no-sandbox',
@@ -246,7 +270,7 @@ async function getPuppeteerPage() {
       if (fs.existsSync(execPath)) {
         try {
           console.log(`[Puppeteer] Trying Chrome at: ${execPath}`);
-          puppeteerBrowser = await puppeteer.default.launch({
+          puppeteerBrowser = await puppeteer.launch({
             executablePath: execPath,
             headless: 'new',
             args: launchArgs
@@ -264,7 +288,7 @@ async function getPuppeteerPage() {
       try {
         // Let Puppeteer find its own bundled Chrome
         console.log('[Puppeteer] Trying default bundled Chrome...');
-        puppeteerBrowser = await puppeteer.default.launch({
+        puppeteerBrowser = await puppeteer.launch({
           headless: 'new',
           args: launchArgs
         });
@@ -275,7 +299,7 @@ async function getPuppeteerPage() {
     }
   }
 
-  if (!puppeteerPage || puppeteerPage.isClosed()) {
+  if (!isPageOpen(puppeteerPage)) {
     puppeteerPage = await puppeteerBrowser.newPage();
     await puppeteerPage.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
@@ -307,7 +331,7 @@ function startAutoRefreshLoop(phone) {
 
     // Strategy 1: If Puppeteer page is open with a valid session, extract fresh token
     try {
-      if (puppeteerPage && !puppeteerPage.isClosed()) {
+      if (isPageOpen(puppeteerPage)) {
         await puppeteerPage.reload({ waitUntil: 'networkidle2', timeout: 15000 });
         const freshToken = await puppeteerPage.evaluate(() => {
           return localStorage.getItem('token') ||
