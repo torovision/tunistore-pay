@@ -123,10 +123,11 @@ app.get('/api/check-status/:shortId', async (req, res) => {
   }
 });
 
-// NEW: Create or resolve link by dynamic amount (e.g. 25 DT)
+// NEW: Create or resolve link by dynamic amount (e.g. 231 DT or 180.120 TND)
 app.post('/api/create-link-by-amount', async (req, res) => {
   const { amountDT } = req.body;
-  const numAmount = parseFloat(amountDT);
+  const cleanStr = String(amountDT).replace(',', '.').replace(/[^\d.]/g, '');
+  const numAmount = parseFloat(cleanStr);
   
   if (isNaN(numAmount) || numAmount <= 0) {
     return res.status(400).json({ error: 'Montant invalide.' });

@@ -78,16 +78,36 @@ linkInput.addEventListener('paste', () => {
   setTimeout(handleLinkInput, 50);
 });
 
+function parseAmountInput(input) {
+  if (!input) return null;
+  const str = input.trim().replace(',', '.').replace(/\s*(DT|TND)$/i, '');
+  if (/^\d+(\.\d+)?$/.test(str)) {
+    const val = parseFloat(str);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  return null;
+}
+
+function formatTnd(millimes) {
+  const dt = millimes / 1000;
+  if (Number.isInteger(dt)) {
+    return `${dt} DT`;
+  }
+  return `${dt.toFixed(3).replace(/\.?0+$/, '')} DT`;
+}
+
 function handleLinkInput() {
   const val = linkInput.value.trim();
   errorMsg.classList.add('hidden');
   clearTimeout(resolveDebounceTimer);
   
-  if (val.length >= 4) {
+  const parsedNum = parseAmountInput(val);
+  const isValidCode = val.length >= 4;
+
+  if (parsedNum !== null || isValidCode) {
     btnPay.disabled = false;
     btnText.textContent = 'Payer maintenant';
 
-    // Auto-resolve preview when pasting or typing code
     resolveDebounceTimer = setTimeout(() => {
       autoResolvePreview(val);
     }, 400);
@@ -102,9 +122,10 @@ function handleLinkInput() {
 
 async function autoResolvePreview(input) {
   if (!userInteractedWithInput) return;
-  const isNumericAmount = /^\d+(\.\d+)?(\s*DT)?$/i.test(input.trim());
+  const parsedNum = parseAmountInput(input);
+  const isNumericAmount = parsedNum !== null;
   const endpoint = isNumericAmount ? '/api/create-link-by-amount' : '/api/resolve-link';
-  const payload = isNumericAmount ? { amountDT: parseFloat(input) } : { link: input };
+  const payload = isNumericAmount ? { amountDT: parsedNum } : { link: input };
 
   try {
     const res = await fetch(endpoint, {
@@ -115,8 +136,7 @@ async function autoResolvePreview(input) {
     if (res.ok) {
       const data = await res.json();
       currentShortId = data.shortId;
-      const amountDT = (data.amount / 1000).toFixed(0);
-      amountValue.textContent = `${amountDT} DT`;
+      amountValue.textContent = formatTnd(data.amount);
       amountPreview.classList.remove('hidden');
       shareWrapper.classList.remove('hidden');
       gsap.fromTo(amountPreview, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.3 });
@@ -134,9 +154,10 @@ btnPay.addEventListener('click', async () => {
   setLoading(true);
   errorMsg.classList.add('hidden');
 
-  const isNumericAmount = /^\d+(\.\d+)?(\s*DT)?$/i.test(input);
+  const parsedNum = parseAmountInput(input);
+  const isNumericAmount = parsedNum !== null;
   const endpoint = isNumericAmount ? '/api/create-link-by-amount' : '/api/resolve-link';
-  const payload = isNumericAmount ? { amountDT: parseFloat(input) } : { link: input };
+  const payload = isNumericAmount ? { amountDT: parsedNum } : { link: input };
 
   try {
     const res = await fetch(endpoint, {
@@ -154,8 +175,7 @@ btnPay.addEventListener('click', async () => {
     currentShortId = data.shortId;
 
     // Show amount preview and share button
-    const amountDT = (data.amount / 1000).toFixed(0);
-    amountValue.textContent = `${amountDT} DT`;
+    amountValue.textContent = formatTnd(data.amount);
     amountPreview.classList.remove('hidden');
     shareWrapper.classList.remove('hidden');
     gsap.fromTo(amountPreview, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3 });
