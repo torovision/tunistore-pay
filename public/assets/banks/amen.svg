@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <!-- Red Arch -->
+  <path d="M 30 42 C 60 14, 140 14, 170 42" stroke="#e30613" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- Text AMEN BANK -->
+  <text x="100" y="44" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-weight="800" font-size="20" fill="#003b73" text-anchor="middle" letter-spacing="1">AMEN BANK</text>
+</svg>
