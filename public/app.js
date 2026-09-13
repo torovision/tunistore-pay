@@ -416,8 +416,7 @@ function stopMainCardDemo() {
 }
 
 async function runMainCardDemo() {
-  const demoCodes = ['2g2ejj', 'k9x4p1', 'a7m2q8'];
-  let idx = 0;
+  const exampleCode = 'xxxx';
   const wrapper = document.querySelector('.link-input-wrapper');
 
   // Attach interaction listeners to stop demo when user interacts
@@ -426,29 +425,25 @@ async function runMainCardDemo() {
   });
   if (btnPaste) btnPaste.addEventListener('click', stopMainCardDemo);
 
-  await delay(1800);
+  await delay(1500);
 
-  while (!userInteractedWithInput) {
-    if (linkInput && linkInput.value.trim().length > 0) {
-      break;
-    }
+  if (userInteractedWithInput || (linkInput && linkInput.value.trim().length > 0)) {
+    return;
+  }
 
-    const code = demoCodes[idx % demoCodes.length];
+  if (wrapper) wrapper.classList.add('demo-active');
 
-    if (wrapper) wrapper.classList.add('demo-active');
-
-    // Type code character by character
-    for (let i = 0; i < code.length; i++) {
-      if (userInteractedWithInput) break;
-      if (linkInput) {
-        linkInput.value += code[i];
-        handleLinkInput();
-      }
-      await delay(110);
-    }
-
+  // Type example code character by character (1 time only)
+  for (let i = 0; i < exampleCode.length; i++) {
     if (userInteractedWithInput) break;
+    if (linkInput) {
+      linkInput.value += exampleCode[i];
+      handleLinkInput();
+    }
+    await delay(120);
+  }
 
+  if (!userInteractedWithInput) {
     // Show amount preview simulation
     if (amountValue && amountPreview) {
       amountValue.textContent = '50 DT';
@@ -463,31 +458,28 @@ async function runMainCardDemo() {
       gsap.fromTo(btnPaste, { scale: 1.2 }, { scale: 1, duration: 0.3 });
     }
 
-    // Hold state for user to see
-    await delay(3500);
+    // Hold for 3 seconds so visitor sees how it works
+    await delay(3000);
+  }
 
-    if (userInteractedWithInput) break;
-
-    // Erase character by character
+  // Cleanly erase and reset back to clean state
+  if (!userInteractedWithInput) {
     if (btnPay) btnPay.classList.remove('demo-pulse');
-    for (let i = code.length; i >= 0; i--) {
+    for (let i = exampleCode.length; i >= 0; i--) {
       if (userInteractedWithInput) break;
       if (linkInput) {
-        linkInput.value = code.substring(0, i);
+        linkInput.value = exampleCode.substring(0, i);
         if (i < 4 && amountPreview) {
           amountPreview.classList.add('hidden');
           if (btnPay) btnPay.disabled = true;
         }
       }
-      await delay(55);
+      await delay(60);
     }
-
-    if (wrapper) wrapper.classList.remove('demo-active');
-    handleLinkInput();
-
-    await delay(1200);
-    idx++;
   }
+
+  if (wrapper) wrapper.classList.remove('demo-active');
+  if (!userInteractedWithInput) handleLinkInput();
 }
 
 // Start loops after page ready
