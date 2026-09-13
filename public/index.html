@@ -39,7 +39,7 @@
         Paiement sécurisé via ClicToPay
       </p>
       <h1 class="hero-title">Solution de paiement<br><span class="hero-highlight">en ligne.</span></h1>
-      <p class="hero-subtitle">Entrez le code de paiement ci-dessous et payez en toute sécurité via ClicToPay.</p>
+      <p class="hero-subtitle">Saisissez le montant en DT (ex: 180.120 DT) pour générer et régler votre paiement instantanément.</p>
     </div>
 
     <!-- PAYMENT CARD -->
@@ -47,10 +47,10 @@
       <div class="card-body" style="padding: 32px;">
         
         <!-- Link / Amount Input -->
-        <label class="link-label" for="linkInput">Code de paiement ou Montant (DT)</label>
+        <label class="link-label" for="linkInput">Montant à payer (DT) ou Code</label>
         <div class="link-input-wrapper">
-          <svg class="link-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-          <input type="text" id="linkInput" class="link-input" placeholder="Entrez le code ou le montant (ex: 2g2ejj ou 50 DT)" autocomplete="off" spellcheck="false">
+          <svg class="link-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <input type="text" id="linkInput" class="link-input" placeholder="Saisissez le montant (ex: 180.120 ou 231 DT)" autocomplete="off" spellcheck="false">
           <button class="link-paste-btn" id="btnPaste" title="Coller">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           </button>
@@ -127,11 +127,11 @@
         <!-- Card 1 -->
         <div class="htp-card">
           <div class="htp-step-number">1</div>
-          <h3 class="htp-card-title">Récupérez le code de paiement</h3>
-          <p class="htp-card-text">Entrez le code de paiement que vous avez reçu dans le champ prévu.</p>
+          <h3 class="htp-card-title">Saisissez le montant</h3>
+          <p class="htp-card-text">Entrez le montant en DT (ex: 180.120 DT) ou collez votre code de paiement.</p>
           <div class="htp-visual htp-visual-1">
             <div class="mockup-input">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
               <span id="step1CodeVal" class="mockup-val"></span>
               <div class="mockup-btn-paste" id="step1PasteBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
@@ -150,7 +150,7 @@
         <div class="htp-card">
           <div class="htp-step-number">2</div>
           <h3 class="htp-card-title">Cliquez sur « Payer maintenant »</h3>
-          <p class="htp-card-text">Une fois le code saisi, cliquez sur le bouton « Payer maintenant ».</p>
+          <p class="htp-card-text">Une fois le montant saisi, cliquez sur le bouton « Payer maintenant ».</p>
           <div class="htp-visual htp-visual-2">
             <div class="mockup-btn-active" id="step2Btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
@@ -222,21 +222,21 @@
             <svg class="flag-icon" viewBox="0 0 1200 800" width="22" height="15" style="border-radius:2px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); flex-shrink: 0;"><rect width="1200" height="800" fill="#e70013"/><circle cx="600" cy="400" r="200" fill="#fff"/><path d="M 660 260 A 140 140 0 1 0 660 540 A 112 112 0 1 1 660 260 Z" fill="#e70013"/><polygon points="650,330 663,375 708,375 672,402 685,447 650,420 615,447 628,402 592,375 637,375" fill="#e70013"/></svg>
             <span>Tunisien :</span>
           </div>
-          <p>دخّل كود الدفع اللي وصلك، أنقر على "Payer maintenant"، ومبعد دخّل معطيات البطاقة البنكية متاعك في صفحة ClicToPay.</p>
+          <p>دخّل المبلغ بالدينار (مثلاً 180.120)، أنقر على "Payer maintenant"، ومبعد دخّل معطيات البطاقة البنكية متاعك في صفحة ClicToPay.</p>
         </div>
         <div class="htp-lang-col">
           <div class="htp-lang-title">
             <svg class="flag-icon" viewBox="0 0 3 2" width="22" height="15" style="border-radius:2px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); flex-shrink: 0;"><rect width="1" height="2" x="0" fill="#002395"/><rect width="1" height="2" x="1" fill="#fff"/><rect width="1" height="2" x="2" fill="#ed2939"/></svg>
             <span>Français :</span>
           </div>
-          <p>Entrez le code de paiement que vous avez reçu, cliquez sur « Payer maintenant », puis entrez les coordonnées de votre carte bancaire en toute sécurité sur la page de ClicToPay.</p>
+          <p>Entrez le montant en TND à régler, cliquez sur « Payer maintenant », puis entrez les coordonnées de votre carte bancaire en toute sécurité sur la page de ClicToPay.</p>
         </div>
         <div class="htp-lang-col">
           <div class="htp-lang-title">
             <svg class="flag-icon" viewBox="0 0 60 30" width="22" height="15" style="border-radius:2px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); flex-shrink: 0;"><clipPath id="s"><path d="M0,0 v30 h60 v-30 z"/></clipPath><g clip-path="url(#s)"><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#cf142b" stroke-width="2"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#cf142b" stroke-width="6"/></g></svg>
             <span>English :</span>
           </div>
-          <p>Enter the payment code you received, click "Payer maintenant", then securely enter your credit card details on the ClicToPay page.</p>
+          <p>Enter the amount in TND to pay, click "Payer maintenant", then securely enter your credit card details on the ClicToPay page.</p>
         </div>
       </div>
     </section>

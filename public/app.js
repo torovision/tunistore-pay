@@ -463,9 +463,9 @@ async function runMockupLoop() {
 
     await delay(600);
 
-    // STEP 1: Type Code
+    // STEP 1: Type Amount
     if (step1Code) {
-      await typeText(step1Code, '2g2ejj', 90);
+      await typeText(step1Code, '180.120', 90);
       await delay(250);
       if (step1Paste) gsap.fromTo(step1Paste, { scale: 1.25 }, { scale: 1, duration: 0.25 });
       if (step1Btn) {
@@ -531,7 +531,7 @@ function stopMainCardDemo() {
 }
 
 async function runMainCardDemo() {
-  const exampleCode = 'xxxx';
+  const exampleCode = '180.120';
   const wrapper = document.querySelector('.link-input-wrapper');
 
   // Attach interaction listeners to stop demo when user interacts
@@ -561,7 +561,7 @@ async function runMainCardDemo() {
   if (!userInteractedWithInput) {
     // Show amount preview simulation
     if (amountValue && amountPreview) {
-      amountValue.textContent = '50 DT';
+      amountValue.textContent = '180.120 DT';
       amountPreview.classList.remove('hidden');
       gsap.fromTo(amountPreview, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3 });
     }
