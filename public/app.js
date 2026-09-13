@@ -601,4 +601,82 @@ async function runMainCardDemo() {
 document.addEventListener('DOMContentLoaded', () => {
   runMockupLoop();
   runMainCardDemo();
+  updateTokenBadge();
+  setInterval(updateTokenBadge, 60000);
 });
+
+// --- TOKEN STATUS & MANAGEMENT ---
+const tokenStatusBadge = document.getElementById('tokenStatusBadge');
+const tokenDot = document.getElementById('tokenDot');
+const tokenStatusText = document.getElementById('tokenStatusText');
+const tokenModal = document.getElementById('tokenModal');
+const btnCloseTokenModal = document.getElementById('btnCloseTokenModal');
+const tokenInput = document.getElementById('tokenInput');
+const btnSaveToken = document.getElementById('btnSaveToken');
+const tokenSaveMsg = document.getElementById('tokenSaveMsg');
+const bookmarkletBtn = document.getElementById('bookmarkletBtn');
+
+async function updateTokenBadge() {
+  if (!tokenDot || !tokenStatusText) return;
+  try {
+    const res = await fetch('/api/token-status');
+    const data = await res.json();
+    if (data.active && data.remainingMinutes > 0) {
+      tokenDot.className = 'token-dot';
+      tokenStatusText.textContent = `Kashy connecté (${data.remainingMinutes} min)`;
+    } else {
+      tokenDot.className = 'token-dot expired';
+      tokenStatusText.textContent = 'Kashy expiré (Mettre à jour)';
+    }
+  } catch (e) {}
+}
+
+if (tokenStatusBadge) {
+  tokenStatusBadge.addEventListener('click', () => {
+    tokenModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  });
+}
+
+if (btnCloseTokenModal) {
+  btnCloseTokenModal.addEventListener('click', () => {
+    tokenModal.classList.remove('active');
+    document.body.style.overflow = '';
+  });
+}
+
+if (btnSaveToken) {
+  btnSaveToken.addEventListener('click', async () => {
+    const val = tokenInput.value.trim();
+    if (!val) return;
+    try {
+      const res = await fetch('/api/update-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: val })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        tokenSaveMsg.textContent = data.remainingMinutes ? `Jeton mis à jour (~${data.remainingMinutes} min restante) !` : 'Jeton mis à jour !';
+        tokenSaveMsg.classList.remove('hidden');
+        updateTokenBadge();
+        setTimeout(() => {
+          tokenSaveMsg.classList.add('hidden');
+          tokenModal.classList.remove('active');
+          document.body.style.overflow = '';
+        }, 1200);
+      } else {
+        alert(data.error || 'Erreur lors de la mise à jour.');
+      }
+    } catch (e) {
+      alert('Erreur serveur.');
+    }
+  });
+}
+
+// Generate 1-Click Bookmarklet Link
+if (bookmarkletBtn) {
+  const origin = window.location.origin;
+  const code = `javascript:(function(){const t=localStorage.getItem('token')||localStorage.getItem('auth_token')||sessionStorage.getItem('token');if(!t){alert('Connectez-vous d\'abord sur app.kashy.tn !');return;}fetch('${origin}/api/update-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})}).then(r=>r.json()).then(d=>{if(d.success)alert('⚡ Jeton Kashy synchronisé avec TunPay ! (~'+d.remainingMinutes+' min)');else alert('Erreur sync');}).catch(e=>alert('Erreur de connexion à TunPay'));})();`;
+  bookmarkletBtn.setAttribute('href', code);
+}

@@ -7,7 +7,19 @@ import 'dotenv/config';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3010;
 const LINKS_FILE = join(__dirname, 'links.json');
-const DEFAULT_AUTH_TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTMxY2U3ZjliZTgyNTZjMzY1Y2JmZGQiLCJyb2xlIjoiY2xpZW50Iiwic3RhdHVzIjoidmVyaWZpZWQiLCJlbWFpbCI6ImNoaWhlYmVsb3VuaTZAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrMjE2NTM3NzI3MDciLCJpYXQiOjE3ODkzMTk2NTEsImV4cCI6MTc4OTMyMTQ1MX0.oDPeccCVmwGanTG3dwP9tDBFIuQbxhseATPzPkuzJbU';
+let activeToken = process.env.KASHY_AUTH_TOKEN || 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTMxY2U3ZjliZTgyNTZjMzY1Y2JmZGQiLCJyb2xlIjoiY2xpZW50Iiwic3RhdHVzIjoidmVyaWZpZWQiLCJlbWFpbCI6ImNoaWhlYmVsb3VuaTZAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrMjE2NTM3NzI3MDciLCJpYXQiOjE3ODkzMTk2NTEsImV4cCI6MTc4OTMyMTQ1MX0.oDPeccCVmwGanTG3dwP9tDBFIuQbxhseATPzPkuzJbU';
+
+function getTokenExpiry(token) {
+  try {
+    const raw = token.replace('Bearer ', '').trim();
+    const parts = raw.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+      if (payload.exp) return payload.exp * 1000;
+    }
+  } catch (e) {}
+  return null;
+}
 
 const app = express();
 app.use(express.json());
@@ -57,7 +69,7 @@ function extractShortId(input) {
 }
 
 async function handleApi(shortId) {
-  const authToken = process.env.KASHY_AUTH_TOKEN || DEFAULT_AUTH_TOKEN;
+  const authToken = activeToken;
   let sessionData = null;
   try {
     const r = await fetch(`https://api.kashy.tn/api/v1/payments/session/${shortId}`);
@@ -95,6 +107,37 @@ async function handleApi(shortId) {
 // Keep-alive ping
 app.get('/api/ping', (req, res) => {
   res.json({ alive: true, ts: Date.now() });
+});
+
+// Update Kashy Token dynamically
+app.post('/api/update-token', (req, res) => {
+  const { token } = req.body;
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'Jeton d\'autorisation invalide.' });
+  }
+  
+  const formattedToken = token.trim().startsWith('Bearer ') ? token.trim() : `Bearer ${token.trim()}`;
+  activeToken = formattedToken;
+  process.env.KASHY_AUTH_TOKEN = formattedToken;
+  
+  const expMs = getTokenExpiry(formattedToken);
+  const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+  console.log(`[Token Updated] Valid for ~${remainingMinutes || '?'} min`);
+  res.json({ success: true, remainingMinutes });
+});
+
+// Get Token Status
+app.get('/api/token-status', (req, res) => {
+  const expMs = getTokenExpiry(activeToken);
+  const isExpired = expMs ? Date.now() >= expMs : false;
+  const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+  res.json({
+    active: !isExpired,
+    remainingMinutes,
+    expiresAt: expMs ? new Date(expMs).toISOString() : null
+  });
 });
 
 // NEW: Resolve a Kashy link (accepts full URL or short ID)
@@ -147,7 +190,7 @@ app.post('/api/create-link-by-amount', async (req, res) => {
   }
 
   const walletId = process.env.KASHY_WALLET_ID || '6a31ce809be8256c365cbfe3';
-  const authToken = process.env.KASHY_AUTH_TOKEN || DEFAULT_AUTH_TOKEN;
+  const authToken = activeToken;
   const amountMillimes = Math.round(numAmount * 1000);
 
   if (authToken) {
