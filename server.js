@@ -300,7 +300,37 @@ async function getPuppeteerPage() {
   }
 
   if (!isPageOpen(puppeteerPage)) {
+    try {
+      const context = puppeteerBrowser.defaultBrowserContext ? puppeteerBrowser.defaultBrowserContext() : puppeteerBrowser;
+      if (context.overridePermissions) {
+        await context.overridePermissions('https://app.kashy.tn', ['notifications']);
+      }
+    } catch(e) {}
+
     puppeteerPage = await puppeteerBrowser.newPage();
+
+    // Mock Notification API so Firebase FCM doesn't throw "Notification permission denied" and halt React state
+    await puppeteerPage.evaluateOnNewDocument(() => {
+      try {
+        window.Notification = class Notification {
+          static permission = 'granted';
+          static requestPermission() {
+            return Promise.resolve('granted');
+          }
+          constructor() {}
+        };
+        if (navigator.permissions && navigator.permissions.query) {
+          const origQuery = navigator.permissions.query;
+          navigator.permissions.query = function(parameters) {
+            if (parameters && parameters.name === 'notifications') {
+              return Promise.resolve({ state: 'granted', onchange: null });
+            }
+            return origQuery.apply(this, arguments);
+          };
+        }
+      } catch(e) {}
+    });
+
     await puppeteerPage.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
     );
