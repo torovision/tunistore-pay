@@ -537,6 +537,13 @@
               const img = document.getElementById('liveBrowserImg');
               if (img) img.src = data.image;
             }
+            if (data.error) {
+              const errMsg = document.getElementById('liveErrorMsg');
+              if (errMsg) {
+                errMsg.textContent = `⚠️ Erreur Kashy : ${data.error}`;
+                errMsg.style.display = 'block';
+              }
+            }
           }
         } catch(e) {}
       }, 3000);

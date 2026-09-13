@@ -315,6 +315,22 @@ async function getPuppeteerPage() {
         req.continue();
       }
     });
+
+    // Capture Kashy auth API response errors
+    puppeteerPage.on('response', async (res) => {
+      if (res.url().includes('api.kashy.tn/api/v1/auth/login')) {
+        try {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok() && data.errors && data.errors.length > 0) {
+            const msg = data.errors[0].message || data.errors[0].code;
+            console.log(`[Puppeteer Intercept Auth Error] ${msg}`);
+            puppeteerState.lastError = msg;
+            puppeteerState.status = 'error';
+            puppeteerState.message = msg;
+          }
+        } catch(e) {}
+      }
+    });
   }
 
   return puppeteerPage;
@@ -627,11 +643,15 @@ app.post('/api/admin/browser/interact', async (req, res) => {
     const imageBuffer = await page.screenshot({ type: 'jpeg', quality: 65 });
     const base64 = imageBuffer.toString('base64');
 
+    const lastErr = puppeteerState.lastError;
+    if (lastErr) puppeteerState.lastError = null;
+
     res.json({
       success: true,
       image: `data:image/jpeg;base64,${base64}`,
       hasToken: !!extractedToken,
-      tokenState: puppeteerState
+      tokenState: puppeteerState,
+      error: lastErr || null
     });
   } catch (err) {
     console.error('[LiveBrowser] Interact error:', err);
@@ -647,7 +667,15 @@ app.get('/api/admin/browser/screenshot', async (req, res) => {
     }
     const imageBuffer = await puppeteerPage.screenshot({ type: 'jpeg', quality: 65 });
     const base64 = imageBuffer.toString('base64');
-    res.json({ success: true, image: `data:image/jpeg;base64,${base64}` });
+    
+    const lastErr = puppeteerState.lastError;
+    if (lastErr) puppeteerState.lastError = null;
+
+    res.json({
+      success: true,
+      image: `data:image/jpeg;base64,${base64}`,
+      error: lastErr || null
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
