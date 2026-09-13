@@ -23,8 +23,22 @@
       <!-- Brand Header -->
     <div class="brand-header gsap-header">
       <div class="logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-        <span>Tun<span>Pay</span></span>
+        <div class="logo-icon-wrapper">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="10" fill="url(#logo-grad-main)"/>
+            <rect x="6" y="9" width="20" height="14" rx="3" stroke="#caff00" stroke-width="2"/>
+            <path d="M6 13.5H26" stroke="#caff00" stroke-width="1.8"/>
+            <circle cx="10.5" cy="18" r="1.5" fill="#caff00"/>
+            <path d="M15 18H21" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="logo-grad-main" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#0F172A"/>
+                <stop offset="1" stop-color="#1E293B"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span class="logo-text">Tun<span class="logo-pill">Pay</span></span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="secure-tag">
