@@ -257,7 +257,8 @@
               Entrez votre numéro et votre mot de passe/PIN Kashy. Le serveur se connectera directement et rafraîchira la session automatiquement en arrière-plan toutes les 25 minutes.
             </p>
 
-            <form onsubmit="event.preventDefault(); submitKashyLogin();">
+            <!-- Step 1: Credentials -->
+            <form id="loginStep1Form" onsubmit="event.preventDefault(); submitKashyLogin();">
               <div class="form-group">
                 <label class="form-label" for="phoneInput">Numéro de téléphone Kashy</label>
                 <input type="text" id="phoneInput" class="form-input" value="+21653772707" placeholder="+216 53 772 707" required>
@@ -269,9 +270,20 @@
               </div>
 
               <button type="submit" class="btn-primary btn-emerald" id="btnLoginKashy">
-                🔐 Se Connecter & Activer le Maintien Automatique
+                🔐 Se Connecter & Demander l'OTP SMS
               </button>
             </form>
+
+            <!-- Step 2: OTP Code Entry (Shown when SMS is sent) -->
+            <div id="otpStepContainer" class="hidden" style="margin-top:20px;background:#f8fafc;padding:20px;border-radius:16px;border:2px solid var(--blue-500);">
+              <div class="form-group">
+                <label class="form-label" for="otpCodeInput" style="color:var(--gray-900);font-size:14px;">📲 Entrez le code SMS OTP (6 chiffres) reçu sur votre téléphone</label>
+                <input type="text" id="otpCodeInput" class="form-input" placeholder="ex: 310967" style="font-size:22px;letter-spacing:8px;text-align:center;font-weight:800;background:#fff;" autocomplete="one-time-code">
+              </div>
+              <button type="button" class="btn-primary btn-emerald" id="btnSubmitOtp" onclick="submitKashyOtp()">
+                ✅ Valider le Code SMS OTP & Activer la Session
+              </button>
+            </div>
 
             <div class="success-msg" id="loginSuccessMsg"></div>
             <div class="error-msg" id="loginErrorMsg"></div>
@@ -484,6 +496,7 @@
       const btn = document.getElementById('btnLoginKashy');
       const succMsg = document.getElementById('loginSuccessMsg');
       const errMsg = document.getElementById('loginErrorMsg');
+      const otpContainer = document.getElementById('otpStepContainer');
 
       if (!phone || !password) return alert('Veuillez saisir votre numéro et votre mot de passe/PIN Kashy.');
 
@@ -501,10 +514,16 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          succMsg.textContent = `⚡ Connecté avec succès ! Maintien de session automatique actif (~${data.remainingMinutes || '?'} min restantes)`;
-          succMsg.style.display = 'block';
-          updateTokenStatus();
-          document.getElementById('kashyPassInput').value = '';
+          if (data.requireOtp) {
+            succMsg.textContent = data.message || 'SMS OTP envoyé sur votre téléphone ! Entrez le code à 6 chiffres ci-dessous.';
+            succMsg.style.display = 'block';
+            if (otpContainer) otpContainer.classList.remove('hidden');
+          } else {
+            succMsg.textContent = `⚡ Connecté avec succès ! Maintien de session automatique actif (~${data.remainingMinutes || '?'} min restantes)`;
+            succMsg.style.display = 'block';
+            updateTokenStatus();
+            document.getElementById('kashyPassInput').value = '';
+          }
         } else {
           errMsg.textContent = data.error || 'Erreur lors de la connexion à Kashy.';
           errMsg.style.display = 'block';
@@ -514,7 +533,48 @@
         errMsg.style.display = 'block';
       } finally {
         btn.disabled = false;
-        btn.textContent = '🔐 Se Connecter & Activer le Maintien Automatique';
+        btn.textContent = '🔐 Se Connecter & Demander l\'OTP SMS';
+      }
+    }
+
+    // Submit SMS OTP Code Handler
+    async function submitKashyOtp() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      const otpCode = document.getElementById('otpCodeInput').value.trim();
+      const btn = document.getElementById('btnSubmitOtp');
+      const succMsg = document.getElementById('loginSuccessMsg');
+      const errMsg = document.getElementById('loginErrorMsg');
+
+      if (!otpCode) return alert('Veuillez saisir le code OTP à 6 chiffres.');
+
+      btn.disabled = true;
+      btn.textContent = 'Validation du code OTP...';
+      if (errMsg) errMsg.style.display = 'none';
+      if (succMsg) succMsg.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/kashy-submit-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, otpCode })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          succMsg.textContent = `⚡ Connecté avec succès ! Jeton actif (~${data.remainingMinutes || '?'} min) — Maintien automatique démarré.`;
+          succMsg.style.display = 'block';
+          updateTokenStatus();
+          document.getElementById('otpCodeInput').value = '';
+        } else {
+          errMsg.textContent = data.error || 'Code OTP invalide.';
+          errMsg.style.display = 'block';
+        }
+      } catch (e) {
+        errMsg.textContent = 'Erreur de validation de l\'OTP.';
+        errMsg.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✅ Valider le Code SMS OTP & Activer la Session';
       }
     }
 

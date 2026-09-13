@@ -491,6 +491,9 @@ app.post('/api/admin/kashy-login', async (req, res) => {
 
         startAutoRefreshLoop(cleanPhone);
         return res.json({ success: true, remainingMinutes, method: 'api' });
+      } else {
+        puppeteerState = { status: 'waiting_otp', message: 'SMS OTP envoyé sur votre téléphone. Saisissez le code ci-dessous.', phone: cleanPhone, lastUpdated: Date.now() };
+        return res.json({ success: true, requireOtp: true, message: puppeteerState.message });
       }
     }
 
@@ -506,6 +509,11 @@ app.post('/api/admin/kashy-login', async (req, res) => {
 
     if (!directRes.ok && apiErrMsg) {
       console.log(`[Login] API returned error: ${apiErrMsg}`);
+      // If error indicates OTP was already sent, trigger OTP step
+      if (apiErrMsg.toLowerCase().includes('otp was sent') || apiErrMsg.toLowerCase().includes('code envoyé')) {
+        puppeteerState = { status: 'waiting_otp', message: apiErrMsg, phone: cleanPhone, lastUpdated: Date.now() };
+        return res.json({ success: true, requireOtp: true, message: apiErrMsg });
+      }
       puppeteerState = { status: 'error', message: apiErrMsg, phone: cleanPhone, lastUpdated: Date.now() };
       return res.status(directRes.status || 400).json({ error: apiErrMsg });
     }
@@ -543,7 +551,7 @@ app.post('/api/admin/kashy-login', async (req, res) => {
       }
     }
 
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 4000));
 
     // Try to extract page error message if visible
     const pageErrorText = await page.evaluate(() => {
@@ -557,7 +565,7 @@ app.post('/api/admin/kashy-login', async (req, res) => {
       return null;
     });
 
-    if (pageErrorText) {
+    if (pageErrorText && !pageErrorText.toLowerCase().includes('otp')) {
       puppeteerState = { status: 'error', message: pageErrorText, phone: cleanPhone, lastUpdated: Date.now() };
       return res.status(400).json({ error: pageErrorText });
     }
@@ -590,12 +598,132 @@ app.post('/api/admin/kashy-login', async (req, res) => {
       startAutoRefreshLoop(cleanPhone);
       return res.json({ success: true, remainingMinutes, method: 'puppeteer' });
     } else {
-      puppeteerState = { status: 'error', message: 'Échec de connexion (numéro ou PIN incorrect).', phone: cleanPhone, lastUpdated: Date.now() };
-      return res.status(400).json({ error: 'Mot de passe / PIN Kashy incorrect ou compte temporairement verrouillé.' });
+      puppeteerState = { status: 'waiting_otp', message: 'SMS OTP envoyé sur votre téléphone. Entrez le code ci-dessous.', phone: cleanPhone, lastUpdated: Date.now() };
+      return res.json({ success: true, requireOtp: true, message: puppeteerState.message });
     }
   } catch (err) {
     console.error('[Login] Puppeteer login error:', err);
     puppeteerState = { status: 'error', message: err.message, phone: cleanPhone, lastUpdated: Date.now() };
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Submit SMS OTP Code
+app.post('/api/admin/kashy-submit-otp', async (req, res) => {
+  const { phone, otpCode } = req.body;
+  if (!otpCode) return res.status(400).json({ error: 'Code OTP (6 chiffres) requis.' });
+
+  const cleanOtp = String(otpCode).trim();
+  const cleanPhone = (phone || puppeteerState.phone || '+21653772707').replace(/\s+/g, '');
+
+  console.log(`[OTP] Submitting OTP code "${cleanOtp}" for ${cleanPhone}...`);
+
+  // 1. Try Direct API Verification
+  const verifyEndpoints = [
+    { url: 'https://api.kashy.tn/api/v1/auth/verify-otp', body: { phoneNumber: cleanPhone, code: cleanOtp } },
+    { url: 'https://api.kashy.tn/api/v1/auth/verify-otp', body: { phoneNumber: cleanPhone, otp: cleanOtp } },
+    { url: 'https://api.kashy.tn/api/v1/auth/verify', body: { phoneNumber: cleanPhone, code: cleanOtp } },
+    { url: 'https://api.kashy.tn/api/v1/auth/login', body: { phoneNumber: cleanPhone, code: cleanOtp } }
+  ];
+
+  for (const { url, body } of verifyEndpoints) {
+    try {
+      const directRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await directRes.json().catch(() => ({}));
+      if (directRes.ok) {
+        const rawToken = data.token || data.accessToken || data.bearer || data.access_token || (data.data && data.data.token);
+        if (rawToken) {
+          const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
+          activeToken = formatted;
+          process.env.KASHY_AUTH_TOKEN = formatted;
+
+          const expMs = getTokenExpiry(formatted);
+          const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+          puppeteerState = {
+            status: 'connected',
+            message: `Connecté à Kashy ! (~${remainingMinutes || '?'} min)`,
+            phone: cleanPhone,
+            lastUpdated: Date.now(),
+            lastRefresh: Date.now()
+          };
+
+          startAutoRefreshLoop(cleanPhone);
+          return res.json({ success: true, remainingMinutes, method: 'api' });
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 2. Puppeteer OTP Submission Fallback
+  try {
+    const page = await getPuppeteerPage();
+
+    const inputs = await page.$$('input');
+    let typed = false;
+    for (const inp of inputs) {
+      const isVisible = await inp.evaluate(el => {
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+      if (isVisible) {
+        await inp.click({ clickCount: 3 });
+        await inp.press('Backspace');
+        await inp.type(cleanOtp, { delay: 40 });
+        typed = true;
+        break;
+      }
+    }
+
+    if (typed) {
+      const buttons = await page.$$('button');
+      for (const btn of buttons) {
+        const text = await btn.evaluate(el => el.textContent.toLowerCase().trim());
+        if (text.includes('verify') || text.includes('valider') || text.includes('confirm') || text.includes('submit') || text.includes('connexion')) {
+          await btn.click();
+          break;
+        }
+      }
+    }
+
+    await new Promise(r => setTimeout(r, 4000));
+
+    const extractedToken = await page.evaluate(() => {
+      const keys = ['token', 'auth_token', 'bearer', 'access_token', 'accessToken', 'jwt', 'kashy_token'];
+      for (const k of keys) {
+        const val = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if (val && val.length > 50) return val;
+      }
+      return null;
+    });
+
+    if (extractedToken) {
+      const formatted = extractedToken.trim().startsWith('Bearer ') ? extractedToken.trim() : `Bearer ${extractedToken.trim()}`;
+      activeToken = formatted;
+      process.env.KASHY_AUTH_TOKEN = formatted;
+
+      const expMs = getTokenExpiry(formatted);
+      const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+      puppeteerState = {
+        status: 'connected',
+        message: `Connecté via navigateur ! (~${remainingMinutes || '?'} min)`,
+        phone: cleanPhone,
+        lastUpdated: Date.now(),
+        lastRefresh: Date.now()
+      };
+
+      startAutoRefreshLoop(cleanPhone);
+      return res.json({ success: true, remainingMinutes, method: 'puppeteer' });
+    } else {
+      return res.status(400).json({ error: 'Code OTP invalide ou non reconnu.' });
+    }
+  } catch (err) {
+    console.error('[OTP] Error submitting OTP:', err);
     res.status(500).json({ error: err.message });
   }
 });
