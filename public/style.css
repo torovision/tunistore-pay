@@ -920,9 +920,9 @@ footer {
 .quick-presets {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin: 8px -4px -6px -4px;
+  padding: 8px 4px 14px 4px;
   overflow-x: auto;
-  padding-bottom: 4px;
   scrollbar-width: none;
 }
 .quick-presets::-webkit-scrollbar { display: none; }
