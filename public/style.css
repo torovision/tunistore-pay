@@ -1120,9 +1120,11 @@ footer {
 }
 .marquee-track {
   display: flex;
-  gap: 12px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 14px;
   width: max-content;
-  animation: marqueeLoop 25s linear infinite;
+  animation: marqueeLoop 30s linear infinite;
 }
 .marquee-track:hover { animation-play-state: paused; }
 
@@ -1133,6 +1135,7 @@ footer {
 .bank-card {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 10px;
   background: var(--white);
   border: 1.5px solid var(--gray-200);
