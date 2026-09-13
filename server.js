@@ -399,280 +399,100 @@ function startAutoRefreshLoop(phone) {
   }, 25 * 60 * 1000); // Every 25 minutes
 }
 
-// Request SMS OTP via Kashy API (primary) or Puppeteer (fallback)
-app.post('/api/admin/kashy-initiate-login', async (req, res) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: 'Numéro de téléphone requis.' });
+// Direct Kashy Login (Phone + Password/PIN) via API & Puppeteer fallback
+app.post('/api/admin/kashy-login', async (req, res) => {
+  const { phone, password } = req.body;
+  if (!phone || !password) return res.status(400).json({ error: 'Numéro de téléphone et Mot de passe / PIN requis.' });
 
   const cleanPhone = phone.replace(/\s+/g, '');
-  puppeteerState = { status: 'loading', message: 'Envoi du SMS...', phone: cleanPhone, lastUpdated: Date.now() };
+  puppeteerState = { status: 'loading', message: 'Connexion à Kashy...', phone: cleanPhone, lastUpdated: Date.now() };
 
-  // Try direct API call to Kashy auth service
+  // 1. Direct API Login
   try {
-    console.log(`[Login] Initiating login for ${cleanPhone} via API...`);
+    console.log(`[Login] Attempting API login for ${cleanPhone}...`);
     const directRes = await fetch('https://api.kashy.tn/api/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phoneNumber: cleanPhone })
+      body: JSON.stringify({
+        phoneNumber: cleanPhone,
+        password: password,
+        deviceId: 'tunpay_' + Math.random().toString(36).substring(2, 9),
+        deviceMeta: { platform: 'web' }
+      })
     });
-    const responseData = await directRes.json().catch(() => ({}));
-    console.log(`[Login] API response status: ${directRes.status}`, JSON.stringify(responseData).slice(0, 200));
 
-    if (directRes.ok || directRes.status === 200 || directRes.status === 201) {
-      puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone}. Entrez le code OTP reçu.`, phone: cleanPhone, lastUpdated: Date.now() };
-      return res.json({ success: true, message: puppeteerState.message, method: 'api' });
-    }
-  } catch (e) {
-    console.error('[Login] Direct API call failed:', e.message);
-  }
+    const data = await directRes.json().catch(() => ({}));
+    console.log(`[Login] Kashy API status: ${directRes.status}`, JSON.stringify(data).slice(0, 300));
 
-  // Fallback: Puppeteer headless browser
-  try {
-    console.log(`[Login] Falling back to Puppeteer for ${cleanPhone}...`);
-    const page = await getPuppeteerPage();
-    await page.goto('https://app.kashy.tn/login', { waitUntil: 'networkidle2', timeout: 30000 });
+    if (directRes.ok) {
+      const rawToken = data.token || data.accessToken || data.bearer || data.access_token || (data.data && data.data.token);
+      if (rawToken) {
+        const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
+        activeToken = formatted;
+        process.env.KASHY_AUTH_TOKEN = formatted;
 
-    // Wait a moment for JS to render
-    await new Promise(r => setTimeout(r, 2000));
+        const expMs = getTokenExpiry(formatted);
+        const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
 
-    // Try multiple selector strategies
-    let phoneInput = null;
-    const selectors = [
-      'input[type="tel"]',
-      'input[name="phone"]',
-      'input[name="phoneNumber"]',
-      'input[placeholder*="téléphone"]',
-      'input[placeholder*="phone"]',
-      'input[placeholder*="53"]',
-      'input[placeholder*="numéro"]',
-      'input[inputmode="numeric"]',
-      'input[inputmode="tel"]'
-    ];
+        puppeteerState = {
+          status: 'connected',
+          message: `Connecté à Kashy ! (~${remainingMinutes || '?'} min)`,
+          phone: cleanPhone,
+          lastUpdated: Date.now(),
+          lastRefresh: Date.now()
+        };
 
-    for (const sel of selectors) {
-      try {
-        phoneInput = await page.$(sel);
-        if (phoneInput) {
-          console.log(`[Login] Found phone input with selector: ${sel}`);
-          break;
-        }
-      } catch(e) {}
-    }
-
-    // Last resort: find any visible input
-    if (!phoneInput) {
-      const allInputs = await page.$$('input');
-      for (const inp of allInputs) {
-        const isVisible = await inp.evaluate(el => {
-          const rect = el.getBoundingClientRect();
-          const style = window.getComputedStyle(el);
-          return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-        });
-        if (isVisible) {
-          phoneInput = inp;
-          console.log('[Login] Using first visible input as phone input.');
-          break;
-        }
+        startAutoRefreshLoop(cleanPhone);
+        return res.json({ success: true, remainingMinutes, method: 'api' });
       }
     }
 
+    if (data.errors && data.errors.length > 0) {
+      const errMsg = data.errors[0].message || 'Identifiants incorrects.';
+      puppeteerState = { status: 'error', message: errMsg, phone: cleanPhone, lastUpdated: Date.now() };
+      return res.status(400).json({ error: errMsg });
+    }
+  } catch (e) {
+    console.error('[Login] API login error:', e.message);
+  }
+
+  // 2. Fallback to Puppeteer Browser
+  try {
+    console.log(`[Login] Falling back to Puppeteer browser for ${cleanPhone}...`);
+    const page = await getPuppeteerPage();
+    await page.goto('https://app.kashy.tn/en/auth', { waitUntil: 'networkidle2', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 2000));
+
+    const phoneInput = await page.$('input[name="email"], input[type="tel"]');
     if (phoneInput) {
       await phoneInput.click({ clickCount: 3 });
       await phoneInput.press('Backspace');
-      const phoneDigits = cleanPhone.replace('+216', '').replace(/\D/g, '');
-      await phoneInput.type(phoneDigits, { delay: 50 });
+      await phoneInput.type(cleanPhone.replace('+216', '').replace(/\D/g, ''), { delay: 40 });
+    }
 
-      // Find and click submit button
-      await new Promise(r => setTimeout(r, 500));
-      const buttons = await page.$$('button');
-      let clicked = false;
-      for (const btn of buttons) {
-        const text = await btn.evaluate(el => el.textContent.toLowerCase().trim());
-        const isVisible = await btn.evaluate(el => {
-          const rect = el.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        });
-        if (isVisible && (text.includes('connexion') || text.includes('login') || text.includes('envoyer') || text.includes('continuer') || text.includes('submit') || text.includes('suivant'))) {
-          await btn.click();
-          clicked = true;
-          console.log(`[Login] Clicked button: "${text}"`);
-          break;
-        }
-      }
-      if (!clicked) {
-        // Click first visible button as fallback
-        for (const btn of buttons) {
-          const isVisible = await btn.evaluate(el => {
-            const rect = el.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-          });
-          if (isVisible) {
-            await btn.click();
-            console.log('[Login] Clicked first visible button.');
-            break;
-          }
-        }
+    const pinInput = await page.$('input[name="pin"], input[type="password"]');
+    if (pinInput) {
+      await pinInput.click({ clickCount: 3 });
+      await pinInput.press('Backspace');
+      await pinInput.type(password, { delay: 40 });
+    }
+
+    const buttons = await page.$$('button');
+    for (const btn of buttons) {
+      const text = await btn.evaluate(el => el.textContent.toLowerCase().trim());
+      if (text.includes('sign in') || text.includes('connexion') || text.includes('se connecter')) {
+        await btn.click();
+        break;
       }
     }
 
-    // Wait for navigation/response
-    await new Promise(r => setTimeout(r, 3000));
-
-    puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone} (via navigateur). Entrez le code OTP.`, phone: cleanPhone, lastUpdated: Date.now() };
-    res.json({ success: true, message: puppeteerState.message, method: 'puppeteer' });
-  } catch (err) {
-    console.error('[Login] Puppeteer error:', err);
-    puppeteerState = { status: 'error', message: err.message, phone: cleanPhone, lastUpdated: Date.now() };
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Submit SMS OTP Code
-app.post('/api/admin/kashy-submit-otp', async (req, res) => {
-  const { otpCode } = req.body;
-  if (!otpCode) return res.status(400).json({ error: 'Code OTP requis.' });
-
-  const cleanOtp = String(otpCode).trim();
-  const phone = puppeteerState.phone || '+21653772707';
-
-  puppeteerState.status = 'verifying';
-  puppeteerState.message = 'Validation du code OTP...';
-  puppeteerState.lastUpdated = Date.now();
-
-  // Strategy 1: Direct API verify-otp
-  try {
-    console.log(`[OTP] Verifying code ${cleanOtp} for ${phone} via API...`);
-
-    // Try multiple possible API endpoints & payload formats
-    const endpoints = [
-      { url: 'https://api.kashy.tn/api/v1/auth/verify-otp', body: { phoneNumber: phone, code: cleanOtp } },
-      { url: 'https://api.kashy.tn/api/v1/auth/verify-otp', body: { phoneNumber: phone, otp: cleanOtp } },
-      { url: 'https://api.kashy.tn/api/v1/auth/verify', body: { phoneNumber: phone, code: cleanOtp } },
-      { url: 'https://api.kashy.tn/api/v1/auth/verify', body: { phoneNumber: phone, verificationCode: cleanOtp } },
-    ];
-
-    for (const { url, body } of endpoints) {
-      try {
-        const directRes = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        const data = await directRes.json().catch(() => ({}));
-        console.log(`[OTP] ${url} status: ${directRes.status}`, JSON.stringify(data).slice(0, 300));
-
-        if (directRes.ok) {
-          const rawToken = data.token || data.accessToken || data.bearer || data.access_token;
-          if (rawToken) {
-            const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
-            activeToken = formatted;
-            process.env.KASHY_AUTH_TOKEN = formatted;
-
-            const expMs = getTokenExpiry(formatted);
-            const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
-
-            puppeteerState = {
-              status: 'connected',
-              message: `Connecté à Kashy ! (~${remainingMinutes || '?'} min)`,
-              phone,
-              lastUpdated: Date.now(),
-              lastRefresh: Date.now()
-            };
-
-            // Start auto-refresh loop
-            startAutoRefreshLoop(phone);
-
-            console.log(`[OTP] ✅ Login successful via API. Token valid for ~${remainingMinutes} min.`);
-            return res.json({ success: true, remainingMinutes, method: 'api' });
-          }
-        }
-      } catch(e) {}
-    }
-  } catch (e) {
-    console.error('[OTP] Direct API error:', e.message);
-  }
-
-  // Strategy 2: Puppeteer OTP Submission
-  try {
-    console.log('[OTP] Falling back to Puppeteer...');
-    const page = await getPuppeteerPage();
-
-    // Try to find OTP input
-    let otpInput = null;
-    const otpSelectors = [
-      'input[type="number"]',
-      'input[name="otp"]',
-      'input[name="code"]',
-      'input[name="verificationCode"]',
-      'input[placeholder*="code"]',
-      'input[placeholder*="OTP"]',
-      'input[placeholder*="vérification"]',
-      'input[inputmode="numeric"]'
-    ];
-
-    for (const sel of otpSelectors) {
-      try {
-        otpInput = await page.$(sel);
-        if (otpInput) {
-          console.log(`[OTP] Found OTP input with selector: ${sel}`);
-          break;
-        }
-      } catch(e) {}
-    }
-
-    // Fallback: find any visible input
-    if (!otpInput) {
-      const allInputs = await page.$$('input');
-      for (const inp of allInputs) {
-        const isVisible = await inp.evaluate(el => {
-          const rect = el.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        });
-        if (isVisible) {
-          otpInput = inp;
-          break;
-        }
-      }
-    }
-
-    if (otpInput) {
-      await otpInput.click({ clickCount: 3 });
-      await otpInput.press('Backspace');
-      await otpInput.type(cleanOtp, { delay: 30 });
-
-      // Find and click verify button
-      await new Promise(r => setTimeout(r, 500));
-      const buttons = await page.$$('button');
-      for (const btn of buttons) {
-        const text = await btn.evaluate(el => el.textContent.toLowerCase().trim());
-        const isVisible = await btn.evaluate(el => {
-          const rect = el.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        });
-        if (isVisible && (text.includes('vérifier') || text.includes('valider') || text.includes('confirmer') || text.includes('verify') || text.includes('submit') || text.includes('connexion'))) {
-          await btn.click();
-          console.log(`[OTP] Clicked button: "${text}"`);
-          break;
-        }
-      }
-    }
-
-    // Wait for page to process and store token
     await new Promise(r => setTimeout(r, 5000));
 
-    // Try to extract the token from localStorage/sessionStorage/cookies
     const extractedToken = await page.evaluate(() => {
-      // Check various storage keys
       const keys = ['token', 'auth_token', 'bearer', 'access_token', 'accessToken', 'jwt', 'kashy_token'];
       for (const key of keys) {
         const val = localStorage.getItem(key) || sessionStorage.getItem(key);
         if (val && val.length > 50) return val;
-      }
-      // Check for token in cookies
-      const cookies = document.cookie.split(';');
-      for (const c of cookies) {
-        const [k, v] = c.trim().split('=');
-        if (k && v && v.length > 50 && (k.includes('token') || k.includes('auth') || k.includes('jwt'))) return v;
       }
       return null;
     });
@@ -688,23 +508,20 @@ app.post('/api/admin/kashy-submit-otp', async (req, res) => {
       puppeteerState = {
         status: 'connected',
         message: `Connecté via navigateur ! (~${remainingMinutes || '?'} min)`,
-        phone,
+        phone: cleanPhone,
         lastUpdated: Date.now(),
         lastRefresh: Date.now()
       };
 
-      // Start auto-refresh loop
-      startAutoRefreshLoop(phone);
-
-      console.log(`[OTP] ✅ Login successful via Puppeteer. Token valid for ~${remainingMinutes} min.`);
+      startAutoRefreshLoop(cleanPhone);
       return res.json({ success: true, remainingMinutes, method: 'puppeteer' });
     } else {
-      puppeteerState = { status: 'error', message: 'Code OTP invalide ou session non générée.', phone, lastUpdated: Date.now() };
-      return res.status(400).json({ error: 'Code OTP invalide ou jeton non extrait du navigateur.' });
+      puppeteerState = { status: 'error', message: 'Échec de connexion (numéro ou PIN incorrect).', phone: cleanPhone, lastUpdated: Date.now() };
+      return res.status(400).json({ error: 'Mot de passe / PIN Kashy incorrect ou compte verrouillé.' });
     }
   } catch (err) {
-    console.error('[OTP] Puppeteer error:', err);
-    puppeteerState = { status: 'error', message: err.message, phone, lastUpdated: Date.now() };
+    console.error('[Login] Puppeteer login error:', err);
+    puppeteerState = { status: 'error', message: err.message, phone: cleanPhone, lastUpdated: Date.now() };
     res.status(500).json({ error: err.message });
   }
 });
