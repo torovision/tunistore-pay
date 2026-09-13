@@ -1,6 +1,8 @@
 // --- STATE ---
 let currentShortId = null;
 let pollTimer = null;
+let createdLinkInput = null;
+let createdLinkData = null;
 
 // --- DOM ELEMENTS ---
 const linkInput = document.getElementById('linkInput');
@@ -104,7 +106,19 @@ function handleLinkInput() {
   const parsedNum = parseAmountInput(val);
   const isValidCode = val.length >= 4;
 
-  if (parsedNum !== null || isValidCode) {
+  if (parsedNum !== null) {
+    btnPay.disabled = false;
+    btnText.textContent = 'Payer maintenant';
+    // Instantly format & display amount preview locally (no Kashy API call during typing = no duplicate link)
+    amountValue.textContent = formatTnd(parsedNum * 1000);
+    amountPreview.classList.remove('hidden');
+    shareWrapper.classList.remove('hidden');
+    if (createdLinkInput !== val) {
+      createdLinkInput = null;
+      createdLinkData = null;
+      currentShortId = null;
+    }
+  } else if (isValidCode) {
     btnPay.disabled = false;
     btnText.textContent = 'Payer maintenant';
 
@@ -117,21 +131,21 @@ function handleLinkInput() {
     amountPreview.classList.add('hidden');
     shareWrapper.classList.add('hidden');
     currentShortId = null;
+    createdLinkInput = null;
+    createdLinkData = null;
   }
 }
 
 async function autoResolvePreview(input) {
   if (!userInteractedWithInput) return;
   const parsedNum = parseAmountInput(input);
-  const isNumericAmount = parsedNum !== null;
-  const endpoint = isNumericAmount ? '/api/create-link-by-amount' : '/api/resolve-link';
-  const payload = isNumericAmount ? { amountDT: parsedNum } : { link: input };
+  if (parsedNum !== null) return; // Numeric amounts are already previewed locally
 
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch('/api/resolve-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ link: input })
     });
     if (res.ok) {
       const data = await res.json();
@@ -156,20 +170,30 @@ btnPay.addEventListener('click', async () => {
 
   const parsedNum = parseAmountInput(input);
   const isNumericAmount = parsedNum !== null;
-  const endpoint = isNumericAmount ? '/api/create-link-by-amount' : '/api/resolve-link';
-  const payload = isNumericAmount ? { amountDT: parsedNum } : { link: input };
 
   try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
+    let data;
+    // Reuse generated link if already created for exact input string
+    if (createdLinkInput === input && createdLinkData && createdLinkData.formUrl) {
+      data = createdLinkData;
+    } else {
+      const endpoint = isNumericAmount ? '/api/create-link-by-amount' : '/api/resolve-link';
+      const payload = isNumericAmount ? { amountDT: parsedNum } : { link: input };
 
-    if (!res.ok) throw new Error(data.error || 'Code ou montant invalide.');
-    if (data.status !== 'INITIATED' && data.status !== 'pending') {
-      throw new Error('Ce paiement a déjà été traité.');
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Code ou montant invalide.');
+      if (data.status !== 'INITIATED' && data.status !== 'pending') {
+        throw new Error('Ce paiement a déjà été traité.');
+      }
+
+      createdLinkInput = input;
+      createdLinkData = data;
     }
 
     currentShortId = data.shortId;
@@ -243,8 +267,7 @@ payIframe.addEventListener('load', () => {
     iframeInitialLoaded = true;
     if (modalLoading) modalLoading.style.display = 'none';
   } else {
-    // ClicToPay submitted and redirected to merchant return URL!
-    // Auto-check status immediately and close modal to prevent iframe connection refused error
+    // If iframe navigates to next page (e.g. 3DS OTP step), check status but DO NOT close modal if still pending
     if (currentShortId) {
       checkStatusNow(currentShortId);
     }
@@ -316,12 +339,13 @@ async function checkStatusNow(shortId) {
       const amountDT = (data.amount / 1000).toFixed(0);
       showResult('success', amountDT);
       return true;
+    } else if (data.status === 'FAILED' || data.status === 'EXPIRED' || data.status === 'CANCELLED') {
+      closePayModalSilently();
+      showResult('fail');
+      return true;
     }
   } catch(e) {}
 
-  closePayModalSilently();
-  showVerifying();
-  startStatusPolling(shortId);
   return false;
 }
 
@@ -395,6 +419,8 @@ function showResult(type, amountDT) {
 window.resetFlow = function() {
   // Clear state
   currentShortId = null;
+  createdLinkInput = null;
+  createdLinkData = null;
   linkInput.value = '';
   amountPreview.classList.add('hidden');
   shareWrapper.classList.add('hidden');
@@ -601,82 +627,4 @@ async function runMainCardDemo() {
 document.addEventListener('DOMContentLoaded', () => {
   runMockupLoop();
   runMainCardDemo();
-  updateTokenBadge();
-  setInterval(updateTokenBadge, 60000);
 });
-
-// --- TOKEN STATUS & MANAGEMENT ---
-const tokenStatusBadge = document.getElementById('tokenStatusBadge');
-const tokenDot = document.getElementById('tokenDot');
-const tokenStatusText = document.getElementById('tokenStatusText');
-const tokenModal = document.getElementById('tokenModal');
-const btnCloseTokenModal = document.getElementById('btnCloseTokenModal');
-const tokenInput = document.getElementById('tokenInput');
-const btnSaveToken = document.getElementById('btnSaveToken');
-const tokenSaveMsg = document.getElementById('tokenSaveMsg');
-const bookmarkletBtn = document.getElementById('bookmarkletBtn');
-
-async function updateTokenBadge() {
-  if (!tokenDot || !tokenStatusText) return;
-  try {
-    const res = await fetch('/api/token-status');
-    const data = await res.json();
-    if (data.active && data.remainingMinutes > 0) {
-      tokenDot.className = 'token-dot';
-      tokenStatusText.textContent = `Kashy connecté (${data.remainingMinutes} min)`;
-    } else {
-      tokenDot.className = 'token-dot expired';
-      tokenStatusText.textContent = 'Kashy expiré (Mettre à jour)';
-    }
-  } catch (e) {}
-}
-
-if (tokenStatusBadge) {
-  tokenStatusBadge.addEventListener('click', () => {
-    tokenModal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-  });
-}
-
-if (btnCloseTokenModal) {
-  btnCloseTokenModal.addEventListener('click', () => {
-    tokenModal.classList.remove('active');
-    document.body.style.overflow = '';
-  });
-}
-
-if (btnSaveToken) {
-  btnSaveToken.addEventListener('click', async () => {
-    const val = tokenInput.value.trim();
-    if (!val) return;
-    try {
-      const res = await fetch('/api/update-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: val })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        tokenSaveMsg.textContent = data.remainingMinutes ? `Jeton mis à jour (~${data.remainingMinutes} min restante) !` : 'Jeton mis à jour !';
-        tokenSaveMsg.classList.remove('hidden');
-        updateTokenBadge();
-        setTimeout(() => {
-          tokenSaveMsg.classList.add('hidden');
-          tokenModal.classList.remove('active');
-          document.body.style.overflow = '';
-        }, 1200);
-      } else {
-        alert(data.error || 'Erreur lors de la mise à jour.');
-      }
-    } catch (e) {
-      alert('Erreur serveur.');
-    }
-  });
-}
-
-// Generate 1-Click Bookmarklet Link
-if (bookmarkletBtn) {
-  const origin = window.location.origin;
-  const code = `javascript:(function(){const t=localStorage.getItem('token')||localStorage.getItem('auth_token')||sessionStorage.getItem('token');if(!t){alert('Connectez-vous d\'abord sur app.kashy.tn !');return;}fetch('${origin}/api/update-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})}).then(r=>r.json()).then(d=>{if(d.success)alert('⚡ Jeton Kashy synchronisé avec TunPay ! (~'+d.remainingMinutes+' min)');else alert('Erreur sync');}).catch(e=>alert('Erreur de connexion à TunPay'));})();`;
-  bookmarkletBtn.setAttribute('href', code);
-}

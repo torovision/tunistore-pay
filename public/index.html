@@ -27,10 +27,6 @@
         <span>Tun<span>Pay</span></span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <div class="token-badge" id="tokenStatusBadge" title="Cliquez pour mettre à jour le jeton Kashy">
-          <span class="token-dot" id="tokenDot"></span>
-          <span id="tokenStatusText">Kashy connecté</span>
-        </div>
         <div class="secure-tag">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Sécurisé
@@ -283,49 +279,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
         </a>
       </div>
-  </div>
-
-  <!-- TOKEN UPDATE MODAL -->
-  <div class="modal-overlay" id="tokenModal">
-    <div class="modal-container" style="height:auto;max-height:85vh;border-radius:24px;">
-      <div class="modal-bar">
-        <div class="modal-bar-left">
-          <div class="modal-bar-dot" style="background:#3b82f6;"></div>
-          <div>
-            <div class="modal-bar-label">Session Kashy & Jeton API</div>
-            <span class="modal-bar-url">Gestion de session en direct</span>
-          </div>
-        </div>
-        <button class="modal-close" id="btnCloseTokenModal" aria-label="Fermer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
-        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.5;">
-          Les jetons de sécurité Kashy expirent toutes les 30 minutes. Collez votre nouveau jeton ci-dessous ou cliquez sur le bouton de synchronisation 1-clic.
-        </p>
-        
-        <label style="font-size:13px;font-weight:700;color:var(--brand-ink);" for="tokenInput">Jeton Bearer Kashy</label>
-        <textarea id="tokenInput" rows="3" style="width:100%;padding:12px;border:2px solid var(--gray-200);border-radius:12px;font-family:monospace;font-size:11.5px;outline:none;" placeholder="Bearer eyJhbGci..."></textarea>
-        
-        <button class="btn-primary" id="btnSaveToken" style="margin-top:0;">
-          Mettre à jour le jeton
-        </button>
-        <div id="tokenSaveMsg" class="error-msg hidden" style="background:#ecfdf5;color:#059669;margin-top:0;">Jeton mis à jour avec succès !</div>
-
-        <hr style="border:none;border-top:1px solid var(--gray-200);margin:4px 0;">
-
-        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:14px;padding:16px;">
-          <h4 style="font-size:13.5px;font-weight:800;margin-bottom:6px;color:var(--brand-ink);">⚡ Synchronisation 1-Clic :</h4>
-          <p style="font-size:12.5px;color:var(--gray-500);line-height:1.4;margin-bottom:12px;">
-            Glissez ce bouton vers votre barre de favoris. Sur <strong>app.kashy.tn</strong>, cliquez dessus pour synchroniser sans ouvrir la console F12 !
-          </p>
-          <a id="bookmarkletBtn" href="#" style="display:inline-flex;align-items:center;gap:6px;background:var(--brand-ink);color:var(--white);padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;" onclick="alert('Glissez ce bouton vers votre barre de favoris !'); return false;">
-            ⚡ Sync Kashy Token
-          </a>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Scripts -->

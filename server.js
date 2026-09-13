@@ -127,6 +127,187 @@ app.post('/api/update-token', (req, res) => {
   res.json({ success: true, remainingMinutes });
 });
 
+// --- PUPPETEER AUTOMATED KASHY SESSION MANAGER ---
+let puppeteerBrowser = null;
+let puppeteerPage = null;
+let puppeteerState = {
+  status: 'idle',
+  message: 'Aucun navigateur actif.',
+  phone: null,
+  lastUpdated: null
+};
+
+async function getPuppeteerPage() {
+  if (!puppeteerBrowser || !puppeteerBrowser.isConnected()) {
+    let puppeteer;
+    try {
+      puppeteer = await import('puppeteer');
+    } catch (e) {
+      throw new Error("Puppeteer n'est pas encore prêt sur le serveur.");
+    }
+
+    puppeteerBrowser = await puppeteer.default.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process'
+      ]
+    });
+  }
+
+  if (!puppeteerPage || puppeteerPage.isClosed()) {
+    puppeteerPage = await puppeteerBrowser.newPage();
+    await puppeteerPage.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    );
+  }
+
+  return puppeteerPage;
+}
+
+// Request SMS OTP via Puppeteer / Kashy Auth
+app.post('/api/admin/kashy-initiate-login', async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Numéro de téléphone requis.' });
+
+  const cleanPhone = phone.replace(/\s+/g, '');
+  puppeteerState = { status: 'loading', message: 'Lancement de la connexion...', phone: cleanPhone, lastUpdated: Date.now() };
+
+  // First try direct API call to Kashy auth service
+  try {
+    const directRes = await fetch('https://api.kashy.tn/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber: cleanPhone })
+    });
+    if (directRes.ok) {
+      puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone}. Entrez le code OTP reçu.`, phone: cleanPhone, lastUpdated: Date.now() };
+      return res.json({ success: true, message: puppeteerState.message });
+    }
+  } catch (e) {}
+
+  // Fallback to Puppeteer headless browser
+  try {
+    const page = await getPuppeteerPage();
+    await page.goto('https://app.kashy.tn/login', { waitUntil: 'networkidle2', timeout: 30000 });
+
+    const phoneInput = await page.waitForSelector('input[type="tel"], input[name="phone"], input[placeholder*="53"], input', { timeout: 10000 });
+    if (phoneInput) {
+      await phoneInput.click({ clickCount: 3 });
+      await phoneInput.type(cleanPhone.replace('+216', ''));
+
+      const submitBtn = await page.$('button[type="submit"], button');
+      if (submitBtn) await submitBtn.click();
+    }
+
+    puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone}. Entrez le code OTP reçu.`, phone: cleanPhone, lastUpdated: Date.now() };
+    res.json({ success: true, message: puppeteerState.message });
+  } catch (err) {
+    console.error('Puppeteer initiate error:', err);
+    puppeteerState = { status: 'error', message: 'Erreur: ' + err.message, phone: cleanPhone, lastUpdated: Date.now() };
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Submit SMS OTP Code
+app.post('/api/admin/kashy-submit-otp', async (req, res) => {
+  const { otpCode } = req.body;
+  if (!otpCode) return res.status(400).json({ error: 'Code OTP requis.' });
+
+  const cleanOtp = String(otpCode).trim();
+  const phone = puppeteerState.phone || '+21653772707';
+
+  // Try Direct API login with OTP first
+  try {
+    const directRes = await fetch('https://api.kashy.tn/api/v1/auth/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber: phone, code: cleanOtp })
+    });
+
+    if (directRes.ok) {
+      const data = await directRes.json();
+      const rawToken = data.token || data.accessToken || data.bearer;
+      if (rawToken) {
+        const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
+        activeToken = formatted;
+        process.env.KASHY_AUTH_TOKEN = formatted;
+
+        const expMs = getTokenExpiry(formatted);
+        const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+        puppeteerState = { status: 'connected', message: `Connecté à Kashy ! (~${remainingMinutes || '?'} min)`, phone, lastUpdated: Date.now() };
+        return res.json({ success: true, remainingMinutes });
+      }
+    }
+  } catch (e) {}
+
+  // Puppeteer OTP Submission Fallback
+  try {
+    const page = await getPuppeteerPage();
+    const otpInput = await page.$('input[type="number"], input[placeholder*="code"], input[placeholder*="OTP"], input');
+    if (otpInput) {
+      await otpInput.click({ clickCount: 3 });
+      await otpInput.type(cleanOtp);
+
+      const submitBtn = await page.$('button[type="submit"], button');
+      if (submitBtn) await submitBtn.click();
+    }
+
+    await new Promise(r => setTimeout(r, 3500));
+
+    const extractedToken = await page.evaluate(() => {
+      return localStorage.getItem('token') || 
+             localStorage.getItem('auth_token') || 
+             localStorage.getItem('bearer') || 
+             sessionStorage.getItem('token');
+    });
+
+    if (extractedToken) {
+      const formatted = extractedToken.trim().startsWith('Bearer ') ? extractedToken.trim() : `Bearer ${extractedToken.trim()}`;
+      activeToken = formatted;
+      process.env.KASHY_AUTH_TOKEN = formatted;
+
+      const expMs = getTokenExpiry(formatted);
+      const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+      puppeteerState = { status: 'connected', message: `Connecté à Kashy via Puppeteer ! (~${remainingMinutes || '?'} min)`, phone, lastUpdated: Date.now() };
+
+      // Keep session alive every 10 min
+      setInterval(async () => {
+        try {
+          if (puppeteerPage && !puppeteerPage.isClosed()) {
+            await puppeteerPage.reload({ waitUntil: 'networkidle2' });
+            const freshToken = await puppeteerPage.evaluate(() => localStorage.getItem('token') || localStorage.getItem('auth_token'));
+            if (freshToken) {
+              const freshFormatted = freshToken.trim().startsWith('Bearer ') ? freshToken.trim() : `Bearer ${freshToken.trim()}`;
+              activeToken = freshFormatted;
+              console.log('[Puppeteer Keep-Alive] Jeton Kashy synchronisé avec succès.');
+            }
+          }
+        } catch(e) {}
+      }, 10 * 60 * 1000);
+
+      return res.json({ success: true, remainingMinutes });
+    } else {
+      return res.status(400).json({ error: 'Code OTP invalide ou jeton non généré.' });
+    }
+  } catch (err) {
+    console.error('Puppeteer OTP submit error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Check Puppeteer Status
+app.get('/api/admin/puppeteer-status', (req, res) => {
+  res.json(puppeteerState);
+});
+
 // Get Token Status
 app.get('/api/token-status', (req, res) => {
   const expMs = getTokenExpiry(activeToken);
@@ -136,7 +317,8 @@ app.get('/api/token-status', (req, res) => {
   res.json({
     active: !isExpired,
     remainingMinutes,
-    expiresAt: expMs ? new Date(expMs).toISOString() : null
+    expiresAt: expMs ? new Date(expMs).toISOString() : null,
+    puppeteerState
   });
 });
 
