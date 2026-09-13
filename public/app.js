@@ -186,6 +186,8 @@ function setLoading(loading) {
 }
 
 // --- MODAL LOGIC ---
+let iframeInitialLoaded = false;
+
 function openPayModal(url) {
   try {
     modalUrl.textContent = new URL(url).hostname;
@@ -193,22 +195,53 @@ function openPayModal(url) {
     modalUrl.textContent = 'ipay.clictopay.com';
   }
   modalExternal.href = url;
+  iframeInitialLoaded = false;
+  const modalLoading = document.getElementById('modalLoading');
+  if (modalLoading) modalLoading.style.display = 'flex';
+  
   payIframe.src = url;
   payModal.classList.add('active');
   document.body.style.overflow = 'hidden';
+
+  // Start status polling immediately so when ClicToPay completes,
+  // we auto-close the modal and display "Paiement réussi !"
+  if (currentShortId) {
+    startStatusPolling(currentShortId);
+  }
 }
 
-btnCloseModal.addEventListener('click', () => {
-  payModal.classList.remove('active');
-  payIframe.src = '';
-  document.body.style.overflow = '';
+payIframe.addEventListener('load', () => {
+  if (!payIframe.src || payIframe.src === 'about:blank' || payIframe.src === window.location.href) return;
+  const modalLoading = document.getElementById('modalLoading');
+  
+  if (!iframeInitialLoaded) {
+    iframeInitialLoaded = true;
+    if (modalLoading) modalLoading.style.display = 'none';
+  } else {
+    // ClicToPay submitted and redirected to merchant return URL!
+    // Auto-check status immediately and close modal to prevent iframe connection refused error
+    if (currentShortId) {
+      checkStatusNow(currentShortId);
+    }
+  }
+});
 
-  // Start polling for payment status
+btnCloseModal.addEventListener('click', () => {
+  closePayModalSilently();
+
+  // Start polling for payment status if not already finished
   if (currentShortId) {
     showVerifying();
     startStatusPolling(currentShortId);
   }
 });
+
+function closePayModalSilently() {
+  if (pollTimer) clearInterval(pollTimer);
+  payModal.classList.remove('active');
+  payIframe.src = 'about:blank';
+  document.body.style.overflow = '';
+}
 
 // --- SHARE LOGIC ---
 btnShare.addEventListener('click', async () => {
@@ -249,9 +282,28 @@ function showVerifying() {
   spinnerAnim.play();
 }
 
+async function checkStatusNow(shortId) {
+  try {
+    const res = await fetch(`/api/check-status/${shortId}`);
+    const data = await res.json();
+    if (data.status === 'PAID' || data.status === 'paid' || data.status === 'SUCCESS' || data.status === 'COMPLETED') {
+      closePayModalSilently();
+      const amountDT = (data.amount / 1000).toFixed(0);
+      showResult('success', amountDT);
+      return true;
+    }
+  } catch(e) {}
+
+  closePayModalSilently();
+  showVerifying();
+  startStatusPolling(shortId);
+  return false;
+}
+
 function startStatusPolling(shortId) {
+  if (pollTimer) clearInterval(pollTimer);
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 30; // 30 attempts * 2s = 60s
   
   pollTimer = setInterval(async () => {
     attempts++;
@@ -259,25 +311,28 @@ function startStatusPolling(shortId) {
       const res = await fetch(`/api/check-status/${shortId}`);
       const data = await res.json();
 
-      if (data.status === 'PAID' || data.status === 'paid' || data.status === 'SUCCESS') {
+      if (data.status === 'PAID' || data.status === 'paid' || data.status === 'SUCCESS' || data.status === 'COMPLETED') {
         clearInterval(pollTimer);
+        closePayModalSilently();
         const amountDT = (data.amount / 1000).toFixed(0);
         showResult('success', amountDT);
       } else if (data.status === 'FAILED' || data.status === 'EXPIRED' || data.status === 'CANCELLED') {
         clearInterval(pollTimer);
+        closePayModalSilently();
         showResult('fail');
       } else if (attempts >= maxAttempts) {
         clearInterval(pollTimer);
-        // Still INITIATED — could be processing
+        if (!resultScreen.classList.contains('hidden')) return;
         showResult('pending');
       }
     } catch (e) {
       if (attempts >= maxAttempts) {
         clearInterval(pollTimer);
+        if (!resultScreen.classList.contains('hidden')) return;
         showResult('pending');
       }
     }
-  }, 3000); // check every 3 seconds
+  }, 2000);
 }
 
 // --- RESULT SCREEN ---
