@@ -58,6 +58,48 @@ document.addEventListener('DOMContentLoaded', () => {
     linkInput.value = paramLink;
     handleLinkInput();
   }
+
+  // Setup Preset Quick Buttons
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      stopMainCardDemo();
+      const amount = btn.getAttribute('data-amount');
+      linkInput.value = amount;
+      handleLinkInput();
+      gsap.fromTo(linkInput, { scale: 1.03 }, { scale: 1, duration: 0.3, ease: "back.out(2)" });
+      gsap.fromTo(btn, { scale: 1.15 }, { scale: 1, duration: 0.3, ease: "back.out(2)" });
+    });
+  });
+
+  // Setup FAQ Accordion Toggles
+  document.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      const isActive = item.classList.contains('active');
+      document.querySelectorAll('.faq-item').forEach(el => el.classList.remove('active'));
+      if (!isActive) item.classList.add('active');
+    });
+  });
+
+  // Setup QR Code Toggle Button
+  const btnToggleQr = document.getElementById('btnToggleQr');
+  const qrBox = document.getElementById('qrBox');
+  const qrImage = document.getElementById('qrImage');
+
+  if (btnToggleQr && qrBox && qrImage) {
+    btnToggleQr.addEventListener('click', () => {
+      const isHidden = qrBox.classList.contains('hidden');
+      if (isHidden) {
+        const code = currentShortId || linkInput.value.trim();
+        const shareUrl = `${window.location.origin}${window.location.pathname}?link=${encodeURIComponent(code)}`;
+        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}`;
+        qrBox.classList.remove('hidden');
+        gsap.fromTo(qrBox, { opacity: 0, scale: 0.9, y: -10 }, { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: "back.out(1.5)" });
+      } else {
+        qrBox.classList.add('hidden');
+      }
+    });
+  }
 });
 
 // --- PASTE BUTTON ---

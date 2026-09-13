@@ -60,9 +60,21 @@
           </button>
         </div>
 
+        <!-- Quick Presets -->
+        <div class="quick-presets" id="quickPresets">
+          <button class="preset-btn" data-amount="10">10 DT</button>
+          <button class="preset-btn" data-amount="20">20 DT</button>
+          <button class="preset-btn" data-amount="50">50 DT</button>
+          <button class="preset-btn" data-amount="100">100 DT</button>
+          <button class="preset-btn" data-amount="200">200 DT</button>
+        </div>
+
         <!-- Amount Preview (shown after link is resolved) -->
         <div class="amount-preview hidden" id="amountPreview">
-          <div class="amount-preview-label">Montant à payer</div>
+          <div class="amount-preview-left">
+            <div class="amount-preview-label">Montant à payer</div>
+            <div class="amount-fee-badge">0 DT frais acheteur</div>
+          </div>
           <div class="amount-preview-value" id="amountValue">0 DT</div>
         </div>
 
@@ -75,13 +87,25 @@
 
         <div id="errorMsg" class="error-msg hidden"></div>
 
-        <!-- Share Button -->
+        <!-- Share & QR Wrapper -->
         <div class="share-wrapper hidden" id="shareWrapper">
-          <button class="share-btn" id="btnShare">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Partager ce lien
-          </button>
+          <div class="share-actions">
+            <button class="share-btn" id="btnShare">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Partager ce lien
+            </button>
+            <button class="qr-btn" id="btnToggleQr">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Code QR
+            </button>
+          </div>
           <span class="share-tooltip hidden" id="shareTooltip">Lien copié !</span>
+          
+          <!-- QR Code Preview Modal / Box -->
+          <div class="qr-box hidden" id="qrBox">
+            <img id="qrImage" src="" alt="QR Code de Paiement TunPay">
+            <p class="qr-hint">Scannez avec votre téléphone pour ouvrir le paiement instantanément</p>
+          </div>
         </div>
       </div>
 
@@ -116,6 +140,71 @@
     </div>
 
     </div> <!-- END OF CHECKOUT CONTAINER -->
+
+    <!-- ANIMATED TRUST STATS SECTION -->
+    <section class="stats-section mt-12">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="stat-value">100%</div>
+          <div class="stat-label">Paiement 3D Secure</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="stat-value">&lt; 30s</div>
+          <div class="stat-label">Temps de Réglement</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>
+          </div>
+          <div class="stat-value">0 DT</div>
+          <div class="stat-label">Frais Acheteur</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="stat-value">24/7</div>
+          <div class="stat-label">Service En Ligne</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TUNISIAN BANKS MARQUEE -->
+    <section class="marquee-section mt-12">
+      <div class="marquee-header">
+        <span class="marquee-badge">Compatibilité Bancaire</span>
+        <h3 class="marquee-title">Accepté par toutes les banques tunisiennes</h3>
+      </div>
+      <div class="marquee-container">
+        <div class="marquee-track">
+          <div class="bank-chip"><span class="bank-dot"></span>BIAT</div>
+          <div class="bank-chip"><span class="bank-dot"></span>Attijari Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>STB Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>BNA</div>
+          <div class="bank-chip"><span class="bank-dot"></span>Amen Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>UIB</div>
+          <div class="bank-chip"><span class="bank-dot"></span>BH Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>La Poste (e-Dinar)</div>
+          <div class="bank-chip"><span class="bank-dot"></span>ATB</div>
+          <div class="bank-chip"><span class="bank-dot"></span>BT</div>
+          <!-- Duplicate for infinite marquee loop -->
+          <div class="bank-chip"><span class="bank-dot"></span>BIAT</div>
+          <div class="bank-chip"><span class="bank-dot"></span>Attijari Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>STB Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>BNA</div>
+          <div class="bank-chip"><span class="bank-dot"></span>Amen Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>UIB</div>
+          <div class="bank-chip"><span class="bank-dot"></span>BH Bank</div>
+          <div class="bank-chip"><span class="bank-dot"></span>La Poste (e-Dinar)</div>
+        </div>
+      </div>
+    </section>
 
     <!-- NEW HOW TO PAY SECTION -->
     <section class="how-to-pay mt-12" id="infoCard">
@@ -244,6 +333,58 @@
             <span>English :</span>
           </div>
           <p>Enter the amount in TND to pay, click "Payer maintenant", then securely enter your credit card details on the ClicToPay page.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANIMATED FAQ ACCORDION SECTION -->
+    <section class="faq-section mt-12">
+      <div class="faq-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Questions Fréquentes
+      </div>
+      <h2 class="faq-title">Tout ce que vous devez savoir</h2>
+      <p class="faq-subtitle">Des réponses claires à vos questions sur le fonctionnement de TunPay.</p>
+
+      <div class="faq-accordion">
+        <div class="faq-item active">
+          <button class="faq-question">
+            <span>Quelles cartes bancaires sont acceptées ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Toutes les cartes bancaires émises en Tunisie sont acceptées : cartes CEDB, Visa, Mastercard, ainsi que la carte e-Dinar de la Poste Tunisienne via le réseau Monétique Tunisie et ClicToPay.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Le paiement est-il totalement sécurisé ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Oui. La transaction s'effectue directement sur les serveurs sécurisés de ClicToPay / Monétique Tunisie avec chiffrement SSL 256-bit et vérification 3D Secure (SMS OTP reçu sur votre téléphone mobile).</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Y a-t-il des frais supplémentaires pour l'acheteur ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Non, aucun frais supplémentaire n'est prélevé. Vous payez exactement le montant affiché en TND sans aucuns frais cachés.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Comment savoir si mon paiement a bien été reçu ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Dès que le paiement est validé sur la page ClicToPay, l'application affiche immédiatement un écran de confirmation « Paiement réussi ! » avec le reçu détaillé et la somme réglée.</p>
+          </div>
         </div>
       </div>
     </section>
