@@ -1014,10 +1014,10 @@ footer {
   gap: 0px;
   background: #0f172a;
   color: #ffffff;
-  padding: 4px;
-  border-radius: 16px;
+  padding: 3px;
+  border-radius: 12px;
   border: 1.5px solid #1e293b;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
   transition: max-width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
               gap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
               padding 0.35s ease,
@@ -1027,33 +1027,33 @@ footer {
               border-color 0.3s ease;
   cursor: pointer;
   overflow: hidden;
-  max-width: 44px;
-  height: 44px;
+  max-width: 34px;
+  height: 34px;
   box-sizing: border-box;
   position: relative;
 }
 
 .qr-app-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #caff00, #a3e600);
   color: #0f172a;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(202, 255, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(202, 255, 0, 0.35);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.3s ease;
 }
 .qr-app-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 
 .qr-app-label {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -1070,22 +1070,22 @@ footer {
 
 /* HOVER EXPANDED STATE */
 .qr-expand-btn:hover {
-  max-width: 160px;
-  padding: 4px 4px 4px 16px;
-  gap: 10px;
+  max-width: 130px;
+  padding: 3px 3px 3px 12px;
+  gap: 8px;
   background: #000000;
   border-color: var(--brand-green);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.25), 0 0 0 2px rgba(202, 255, 0, 0.2);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.25), 0 0 0 2px rgba(202, 255, 0, 0.2);
   transform: translateY(-2px) scale(1.04);
 }
 .qr-expand-btn:hover .qr-app-label {
   opacity: 1;
-  max-width: 80px;
+  max-width: 70px;
   transform: translateX(0) scale(1);
 }
 .qr-expand-btn:hover .qr-app-icon {
   transform: translateX(2px) scale(1.08);
-  box-shadow: 0 4px 14px rgba(202, 255, 0, 0.5);
+  box-shadow: 0 3px 10px rgba(202, 255, 0, 0.5);
 }
 
 .qr-box {
