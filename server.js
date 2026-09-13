@@ -148,41 +148,62 @@ app.post('/api/create-link-by-amount', async (req, res) => {
 
   const walletId = process.env.KASHY_WALLET_ID || '6a31ce809be8256c365cbfe3';
   const authToken = process.env.KASHY_AUTH_TOKEN || DEFAULT_AUTH_TOKEN;
+  const amountMillimes = Math.round(numAmount * 1000);
 
   if (authToken) {
-    try {
-      const amountMillimes = Math.round(numAmount * 1000);
-      const r = await fetch('https://api.kashy.tn/api/v1/payments/links', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          walletId,
-          amount: amountMillimes,
-          description: `Paiement ${numAmount} DT via TunPay`
-        })
-      });
+    const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+    
+    // Candidate endpoints Kashy uses for link creation
+    const candidateEndpoints = [
+      'https://api.kashy.tn/api/v1/payments/links',
+      `https://api.kashy.tn/api/v1/payments/links/wallets/${walletId}`,
+      `https://api.kashy.tn/api/v1/wallets/${walletId}/payment-links`
+    ];
 
-      if (r.ok) {
-        const data = await r.json();
-        const shortId = data.shortId || data.id || data.code;
-        if (shortId) {
-          const apiRes = await handleApi(shortId);
-          return res.json({ shortId, ...apiRes, amount: amountMillimes });
+    for (const url of candidateEndpoints) {
+      try {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            walletId,
+            wallet: walletId,
+            amount: amountMillimes,
+            description: `Paiement ${numAmount} DT via TunPay`,
+            title: `Paiement ${numAmount} DT`
+          })
+        });
+
+        if (r.ok) {
+          const data = await r.json();
+          const shortId = data.shortId || data.id || data.code || data._id;
+          if (shortId) {
+            const apiRes = await handleApi(shortId);
+            return res.json({ shortId, ...apiRes, amount: amountMillimes });
+          }
+        } else {
+          console.error(`Kashy link creation attempt on ${url} failed (${r.status}):`, await r.text());
         }
+      } catch (e) {
+        console.error(`Kashy link creation error on ${url}:`, e);
       }
-    } catch(e) {
-      console.error('Kashy dynamic link creation error:', e);
     }
   }
 
-  // Fallback: search pre-saved amount links or fallback session
+  // Fallback if token is expired or link creation fails
   const links = getLinks();
-  const shortId = links[numAmount.toString()] || links[`${Math.round(numAmount)}`] || 'xxxx';
-  const apiRes = await handleApi(shortId);
-  res.json({ shortId, ...apiRes, amount: Math.round(numAmount * 1000) });
+  const shortId = links[numAmount.toString()] || links[`${Math.round(numAmount)}`];
+  if (shortId) {
+    const apiRes = await handleApi(shortId);
+    if (apiRes && apiRes.formUrl) {
+      return res.json({ shortId, ...apiRes, amount: amountMillimes });
+    }
+  }
+
+  res.status(401).json({ error: 'Session Kashy expirée. Veuillez recharger votre session Kashy ou fournir un jeton d\'autorisation valide.' });
 });
 
 // OLD: Resolve by amount (backward compatible)
