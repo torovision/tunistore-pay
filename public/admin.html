@@ -170,13 +170,13 @@
           Authentification
         </div>
       </div>
-      <div class="card-body auth-card">
+      <form class="card-body auth-card" onsubmit="event.preventDefault(); checkAuth();">
         <label class="form-label" for="pwd">Mot de passe administrateur</label>
-        <input type="password" id="pwd" class="form-input" placeholder="Mot de passe" style="max-width:320px;margin:0 auto 12px;">
+        <input type="password" id="pwd" class="form-input" placeholder="Mot de passe" style="max-width:320px;margin:0 auto 12px;" onkeyup="if(event.key==='Enter') checkAuth();">
         <br>
-        <button class="btn-primary" style="max-width:320px;margin:0 auto;" onclick="checkAuth()">Connexion</button>
+        <button type="submit" class="btn-primary" style="max-width:320px;margin:0 auto;">Connexion</button>
         <div class="error-msg" id="authError">Mot de passe incorrect</div>
-      </div>
+      </form>
     </div>
 
     <!-- Admin Content (hidden until auth) -->
@@ -283,8 +283,8 @@
     const toast = document.getElementById('toast');
 
     function checkAuth() {
-      const pwd = document.getElementById('pwd').value;
-      if (pwd === 'Battan25') {
+      const pwd = document.getElementById('pwd').value.trim();
+      if (pwd.toLowerCase() === 'battan25') {
         document.getElementById('authCard').classList.add('hidden');
         document.getElementById('adminContent').classList.remove('hidden');
         renderGrid();
