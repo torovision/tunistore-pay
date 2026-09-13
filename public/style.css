@@ -150,6 +150,19 @@ main {
 .amount-preview-label { font-size: 13px; font-weight: 600; color: var(--gray-600); }
 .amount-preview-value { font-size: 22px; font-weight: 800; color: var(--brand-ink); letter-spacing: -0.03em; }
 
+.link-input-wrapper.demo-active {
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 4px rgba(202, 255, 0, 0.25);
+  background: var(--white);
+}
+.btn-primary.demo-pulse {
+  animation: btnPulseGlow 1.8s infinite ease-in-out;
+}
+@keyframes btnPulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(202, 255, 0, 0.5); transform: scale(1); }
+  50% { box-shadow: 0 0 20px 6px rgba(202, 255, 0, 0.4); transform: scale(1.01); }
+}
+
 /* PRIMARY BUTTON */
 .btn-primary {
   width: 100%; background: var(--brand-green); color: var(--brand-ink);

@@ -404,7 +404,94 @@ async function runMockupLoop() {
   }
 }
 
-// Start loop after page ready
+// --- MAIN CARD AUTOMATED DEMO ---
+let userInteractedWithInput = false;
+
+function stopMainCardDemo() {
+  if (userInteractedWithInput) return;
+  userInteractedWithInput = true;
+  const wrapper = document.querySelector('.link-input-wrapper');
+  if (wrapper) wrapper.classList.remove('demo-active');
+  if (btnPay) btnPay.classList.remove('demo-pulse');
+}
+
+async function runMainCardDemo() {
+  const demoCodes = ['2g2ejj', 'k9x4p1', 'a7m2q8'];
+  let idx = 0;
+  const wrapper = document.querySelector('.link-input-wrapper');
+
+  // Attach interaction listeners to stop demo when user interacts
+  ['focus', 'click', 'keydown', 'paste', 'input', 'touchstart'].forEach(evt => {
+    if (linkInput) linkInput.addEventListener(evt, stopMainCardDemo);
+  });
+  if (btnPaste) btnPaste.addEventListener('click', stopMainCardDemo);
+
+  await delay(1800);
+
+  while (!userInteractedWithInput) {
+    if (linkInput && linkInput.value.trim().length > 0) {
+      break;
+    }
+
+    const code = demoCodes[idx % demoCodes.length];
+
+    if (wrapper) wrapper.classList.add('demo-active');
+
+    // Type code character by character
+    for (let i = 0; i < code.length; i++) {
+      if (userInteractedWithInput) break;
+      if (linkInput) {
+        linkInput.value += code[i];
+        handleLinkInput();
+      }
+      await delay(110);
+    }
+
+    if (userInteractedWithInput) break;
+
+    // Show amount preview simulation
+    if (amountValue && amountPreview) {
+      amountValue.textContent = '50 DT';
+      amountPreview.classList.remove('hidden');
+      gsap.fromTo(amountPreview, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3 });
+    }
+    if (btnPay) {
+      btnPay.disabled = false;
+      btnPay.classList.add('demo-pulse');
+    }
+    if (btnPaste) {
+      gsap.fromTo(btnPaste, { scale: 1.2 }, { scale: 1, duration: 0.3 });
+    }
+
+    // Hold state for user to see
+    await delay(3500);
+
+    if (userInteractedWithInput) break;
+
+    // Erase character by character
+    if (btnPay) btnPay.classList.remove('demo-pulse');
+    for (let i = code.length; i >= 0; i--) {
+      if (userInteractedWithInput) break;
+      if (linkInput) {
+        linkInput.value = code.substring(0, i);
+        if (i < 4 && amountPreview) {
+          amountPreview.classList.add('hidden');
+          if (btnPay) btnPay.disabled = true;
+        }
+      }
+      await delay(55);
+    }
+
+    if (wrapper) wrapper.classList.remove('demo-active');
+    handleLinkInput();
+
+    await delay(1200);
+    idx++;
+  }
+}
+
+// Start loops after page ready
 document.addEventListener('DOMContentLoaded', () => {
   runMockupLoop();
+  runMainCardDemo();
 });
