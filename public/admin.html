@@ -519,6 +519,29 @@
     }
 
     // Live Browser Remote Control Handlers
+    let liveStreamTimer = null;
+
+    function startLiveStreamPolling() {
+      if (liveStreamTimer) clearInterval(liveStreamTimer);
+      liveStreamTimer = setInterval(async () => {
+        const tab4 = document.getElementById('tab4');
+        if (!tab4 || tab4.classList.contains('hidden')) return;
+        const wrapper = document.getElementById('liveBrowserWrapper');
+        if (!wrapper || wrapper.classList.contains('hidden')) return;
+
+        try {
+          const res = await fetch('/api/admin/browser/screenshot');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.image) {
+              const img = document.getElementById('liveBrowserImg');
+              if (img) img.src = data.image;
+            }
+          }
+        } catch(e) {}
+      }, 3000);
+    }
+
     async function startLiveBrowser() {
       const btn = document.getElementById('btnStartLive');
       const wrapper = document.getElementById('liveBrowserWrapper');
@@ -541,6 +564,7 @@
           img.src = data.image;
           wrapper.classList.remove('hidden');
           controls.classList.remove('hidden');
+          startLiveStreamPolling();
         } else {
           if (errMsg) {
             errMsg.textContent = data.error || 'Impossible de lancer Chrome sur le serveur.';

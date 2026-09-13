@@ -584,15 +584,15 @@ app.post('/api/admin/browser/interact', async (req, res) => {
     if (action === 'click' && typeof x === 'number' && typeof y === 'number') {
       console.log(`[LiveBrowser] Click at (${x}, ${y})`);
       await page.mouse.click(x, y);
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 2000));
     } else if (action === 'type' && text) {
       console.log(`[LiveBrowser] Type text: "${text}"`);
-      await page.keyboard.type(text, { delay: 30 });
-      await new Promise(r => setTimeout(r, 500));
+      await page.keyboard.type(text, { delay: 40 });
+      await new Promise(r => setTimeout(r, 2000));
     } else if (action === 'press' && key) {
       console.log(`[LiveBrowser] Press key: "${key}"`);
       await page.keyboard.press(key);
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 2000));
     }
 
     // Check if token became available in storage
@@ -635,6 +635,20 @@ app.post('/api/admin/browser/interact', async (req, res) => {
     });
   } catch (err) {
     console.error('[LiveBrowser] Interact error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fast screenshot endpoint for live stream polling
+app.get('/api/admin/browser/screenshot', async (req, res) => {
+  try {
+    if (!puppeteerPage || !isPageOpen(puppeteerPage)) {
+      return res.status(404).json({ error: 'Page non active.' });
+    }
+    const imageBuffer = await puppeteerPage.screenshot({ type: 'jpeg', quality: 65 });
+    const base64 = imageBuffer.toString('base64');
+    res.json({ success: true, image: `data:image/jpeg;base64,${base64}` });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
