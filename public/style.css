@@ -969,12 +969,12 @@ footer {
   position: relative;
   width: 100%;
 }
-.share-actions {
+.share-actions-centered {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: relative;
-  min-height: 44px;
+  gap: 12px;
   width: 100%;
 }
 .share-btn {
@@ -988,10 +988,9 @@ footer {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 10px 22px;
   border-radius: 999px;
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  margin: 0 auto;
 }
 .share-btn:hover {
   background: var(--brand-ink);
@@ -1006,32 +1005,29 @@ footer {
   flex-shrink: 0;
 }
 
-/* ENHANCED APP LOGO QR BUTTON */
-.qr-app-btn {
-  position: absolute;
-  right: 0;
+/* EXPANDING APP LOGO QR BUTTON */
+.qr-expand-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0px;
   background: #0f172a;
   color: #ffffff;
-  padding: 5px 14px 5px 5px;
-  border-radius: 14px;
+  padding: 4px;
+  border-radius: 16px;
   border: 1.5px solid #1e293b;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: max-width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), padding 0.3s ease, background 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease;
   cursor: pointer;
+  overflow: hidden;
+  max-width: 44px; /* Default: only icon visible */
+  height: 44px;
+  box-sizing: border-box;
 }
-.qr-app-btn:hover {
-  transform: translateY(-2px) scale(1.04);
-  background: #000000;
-  border-color: var(--brand-green);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
-}
+
 .qr-app-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
   background: linear-gradient(135deg, #caff00, #a3e600);
   color: #0f172a;
   display: flex;
@@ -1039,17 +1035,41 @@ footer {
   justify-content: center;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(202, 255, 0, 0.35);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .qr-app-icon svg {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
 }
+
 .qr-app-label {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: -0.01em;
   white-space: nowrap;
   color: #ffffff;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.25s ease 0.05s, transform 0.3s ease 0.05s;
+  pointer-events: none;
+}
+
+/* HOVER EXPANDED STATE */
+.qr-expand-btn:hover {
+  max-width: 145px;
+  padding-right: 14px;
+  gap: 10px;
+  background: #000000;
+  border-color: var(--brand-green);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.25), 0 0 0 2px rgba(202, 255, 0, 0.2);
+  transform: translateY(-2px) scale(1.04);
+}
+.qr-expand-btn:hover .qr-app-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+.qr-expand-btn:hover .qr-app-icon {
+  transform: scale(1.05);
 }
 
 .qr-box {
