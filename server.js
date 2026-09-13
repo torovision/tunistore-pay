@@ -26,7 +26,10 @@ function saveLinks(links) {
 
 function sanitizeUrl(url, mdOrder) {
   if (url) return url.replace(':443', '').replace('/epg/', '/payment/');
-  return `https://ipay.clictopay.com/payment/merchants/CLICTOPAY-2/p2p_payment.html?mdOrder=${mdOrder}&language=fr`;
+  if (mdOrder && mdOrder !== 'fallback') {
+    return `https://ipay.clictopay.com/payment/merchants/CLICTOPAY-2/p2p_payment.html?mdOrder=${mdOrder}&language=fr`;
+  }
+  return null;
 }
 
 /**
@@ -54,6 +57,7 @@ function extractShortId(input) {
 }
 
 async function handleApi(shortId) {
+  const authToken = process.env.KASHY_AUTH_TOKEN || DEFAULT_AUTH_TOKEN;
   let sessionData = null;
   try {
     const r = await fetch(`https://api.kashy.tn/api/v1/payments/session/${shortId}`);
@@ -62,19 +66,25 @@ async function handleApi(shortId) {
 
   let rawFormUrl = '', orderId = '';
   try {
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (authToken) {
+      headers['Authorization'] = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+    }
     const r = await fetch(`https://api.kashy.tn/api/v1/wallets/bank-card/generic-bank-card-register/payments/${shortId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers,
       body: JSON.stringify({})
     });
     if (r.ok) {
       const d = await r.json();
       rawFormUrl = d.formUrl || '';
       orderId = d.orderId || d.orderNumber || '';
+    } else {
+      console.error('register fetch status:', r.status);
     }
   } catch (e) { console.error('register fetch err', e); }
 
-  const finalUrl = sanitizeUrl(rawFormUrl, orderId || 'fallback');
+  const finalUrl = sanitizeUrl(rawFormUrl, orderId);
   const amount = sessionData ? sessionData.amount : 100000;
   const status = sessionData ? sessionData.status : 'INITIATED';
   return { amount, formUrl: finalUrl, status };
@@ -98,6 +108,9 @@ app.post('/api/resolve-link', async (req, res) => {
 
   try {
     const result = await handleApi(shortId);
+    if (!result.formUrl) {
+      return res.status(400).json({ error: 'Session de paiement introuvable ou expirée sur Kashy.' });
+    }
     res.json({ shortId, ...result });
   } catch (err) {
     console.error('resolve-link error', err);
