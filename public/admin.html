@@ -30,33 +30,9 @@
     .admin-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;
     }
-    .logo {
-      display: flex; align-items: center; gap: 10px;
-      font-weight: 800; font-size: 22px; letter-spacing: -0.05em;
-      color: var(--brand-ink); text-decoration: none; user-select: none;
-    }
-    .logo-icon-wrapper {
-      width: 36px; height: 36px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 11px;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-      flex-shrink: 0;
-    }
-    .logo:hover .logo-icon-wrapper {
-      transform: scale(1.08) rotate(-3deg);
-    }
-    .logo-text {
-      display: flex; align-items: center; gap: 3px; font-weight: 800; font-size: 21px; color: var(--brand-ink);
-    }
-    .logo-pill {
-      background: var(--brand-green); color: var(--brand-ink);
-      padding: 2px 8px; border-radius: 7px;
-      font-size: 17px; font-weight: 800; letter-spacing: -0.04em;
-      box-shadow: 0 2px 10px rgba(202, 255, 0, 0.4);
-      line-height: 1.25;
-    }
+    .admin-logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 20px; letter-spacing: -0.04em; }
+    .admin-logo svg { width: 20px; height: 20px; color: var(--brand-ink); }
+    .admin-logo span span { color: var(--gray-500); font-weight: 700; }
     .admin-tag {
       font-size: 10px; font-weight: 800; background: var(--brand-ink); color: var(--brand-green);
       padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.06em;
@@ -179,23 +155,9 @@
   <div class="admin-container">
     <!-- Header -->
     <div class="admin-header">
-      <div class="logo">
-        <div class="logo-icon-wrapper">
-          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="10" fill="url(#logo-grad-admin)"/>
-            <rect x="6" y="9" width="20" height="14" rx="3" stroke="#caff00" stroke-width="2"/>
-            <path d="M6 13.5H26" stroke="#caff00" stroke-width="1.8"/>
-            <circle cx="10.5" cy="18" r="1.5" fill="#caff00"/>
-            <path d="M15 18H21" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-            <defs>
-              <linearGradient id="logo-grad-admin" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#0F172A"/>
-                <stop offset="1" stop-color="#1E293B"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <span class="logo-text">Tun<span class="logo-pill">Pay</span></span>
+      <div class="admin-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        <span>Tun<span>Pay</span></span>
       </div>
       <span class="admin-tag">Admin</span>
     </div>
@@ -355,6 +317,7 @@
           sublabel.textContent = 'Collez un nouveau jeton ci-dessous';
           time.textContent = 'Expiré';
           time.className = 'token-time expired';
+        }
       } catch (e) {}
     }
 
