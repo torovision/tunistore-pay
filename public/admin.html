@@ -230,7 +230,10 @@
       <!-- Tab Navigation -->
       <div class="tabs-nav">
         <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">
-          ⚡ Connexion Directe Kashy
+          ⚡ Connexion Directe
+        </button>
+        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">
+          🖥️ Écran Chrome en Direct
         </button>
         <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">
           🔑 Jeton Manuel & Sync
@@ -272,6 +275,55 @@
 
             <div class="success-msg" id="loginSuccessMsg"></div>
             <div class="error-msg" id="loginErrorMsg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: Live Chrome Screen (Remote Desktop View) -->
+      <div class="tab-content hidden" id="tab4">
+        <div class="card" style="border:2px solid var(--blue-500);">
+          <div class="card-header" style="background:#eff6ff;">
+            <div class="card-header-title" style="color:var(--blue-600);">
+              🖥️ Navigateur Chrome en En direct sur le Serveur
+            </div>
+          </div>
+          <div class="card-body" style="text-align:center;">
+            <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px;line-height:1.5;">
+              Visualisez et interagissez directement avec le navigateur Chrome du serveur. Cliquez sur l'image pour positionner le curseur, tapez votre texte ci-dessous et validez votre connexion Kashy !
+            </p>
+
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;">
+              <button class="btn-primary btn-blue" id="btnStartLive" onclick="startLiveBrowser()" style="width:auto;padding:10px 20px;font-size:13px;">
+                🖥️ Lancer l'Écran Chrome
+              </button>
+              <button class="btn-primary btn-emerald" id="btnExtractLiveToken" onclick="interactLive('extract')" style="width:auto;padding:10px 20px;font-size:13px;">
+                ⚡ Extraire le Jeton
+              </button>
+            </div>
+
+            <!-- Live Browser Image Frame -->
+            <div id="liveBrowserWrapper" class="hidden" style="position:relative;display:inline-block;border:2px solid var(--gray-300);border-radius:14px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);background:#fff;max-width:100%;">
+              <img id="liveBrowserImg" style="display:block;cursor:crosshair;max-width:100%;height:auto;margin:0 auto;" onclick="onLiveImgClick(event)" title="Cliquez pour interagir sur l'écran">
+              <div id="liveLoadingOverlay" class="hidden" style="position:absolute;inset:0;background:rgba(255,255,255,0.75);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--blue-600);">
+                🔄 Actualisation de l'écran...
+              </div>
+            </div>
+
+            <!-- Live Text & Key Controls -->
+            <div id="liveControls" class="hidden" style="margin-top:14px;max-width:450px;margin-left:auto;margin-right:auto;">
+              <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input type="text" id="liveTextInput" class="form-input" placeholder="Tapez du texte à envoyer dans le champ actif..." onkeydown="if(event.key==='Enter') sendLiveText()">
+                <button class="btn-primary btn-blue" style="width:auto;padding:0 18px;margin-top:0;font-size:13px;" onclick="sendLiveText()">Envoyer</button>
+              </div>
+              <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+                <button class="amount-card-btn" style="width:auto;padding:6px 12px;background:var(--gray-800);" onclick="sendLiveKey('Enter')">⏎ Touche Entrée</button>
+                <button class="amount-card-btn" style="width:auto;padding:6px 12px;background:var(--gray-800);" onclick="sendLiveKey('Backspace')">⌫ Effacer</button>
+                <button class="amount-card-btn" style="width:auto;padding:6px 12px;background:var(--gray-800);" onclick="sendLiveKey('Tab')">⇥ Touche Tab</button>
+              </div>
+            </div>
+
+            <div class="success-msg" id="liveSuccessMsg"></div>
+            <div class="error-msg" id="liveErrorMsg"></div>
           </div>
         </div>
       </div>
@@ -464,6 +516,112 @@
         btn.disabled = false;
         btn.textContent = '🔐 Se Connecter & Activer le Maintien Automatique';
       }
+    }
+
+    // Live Browser Remote Control Handlers
+    async function startLiveBrowser() {
+      const btn = document.getElementById('btnStartLive');
+      const wrapper = document.getElementById('liveBrowserWrapper');
+      const controls = document.getElementById('liveControls');
+      const img = document.getElementById('liveBrowserImg');
+      const overlay = document.getElementById('liveLoadingOverlay');
+      const succMsg = document.getElementById('liveSuccessMsg');
+      const errMsg = document.getElementById('liveErrorMsg');
+
+      btn.disabled = true;
+      btn.textContent = 'Lancement du navigateur...';
+      if (errMsg) errMsg.style.display = 'none';
+      if (succMsg) succMsg.style.display = 'none';
+      overlay.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/admin/browser/start', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok && data.image) {
+          img.src = data.image;
+          wrapper.classList.remove('hidden');
+          controls.classList.remove('hidden');
+        } else {
+          if (errMsg) {
+            errMsg.textContent = data.error || 'Impossible de lancer Chrome sur le serveur.';
+            errMsg.style.display = 'block';
+          }
+        }
+      } catch (e) {
+        if (errMsg) {
+          errMsg.textContent = 'Erreur de connexion au serveur.';
+          errMsg.style.display = 'block';
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Rafraîchir l\'Écran Chrome';
+        overlay.classList.add('hidden');
+      }
+    }
+
+    async function interactLive(action, params = {}) {
+      const img = document.getElementById('liveBrowserImg');
+      const overlay = document.getElementById('liveLoadingOverlay');
+      const succMsg = document.getElementById('liveSuccessMsg');
+      const errMsg = document.getElementById('liveErrorMsg');
+
+      overlay.classList.remove('hidden');
+      if (errMsg) errMsg.style.display = 'none';
+      if (succMsg) succMsg.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/browser/interact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, ...params })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.image) {
+          img.src = data.image;
+          if (data.hasToken) {
+            succMsg.textContent = '⚡ Jeton Kashy extrait avec succès ! Session active en arrière-plan.';
+            succMsg.style.display = 'block';
+            updateTokenStatus();
+          }
+        } else {
+          if (errMsg) {
+            errMsg.textContent = data.error || 'Erreur d\'interaction avec le navigateur.';
+            errMsg.style.display = 'block';
+          }
+        }
+      } catch (e) {
+        if (errMsg) {
+          errMsg.textContent = 'Erreur réseau.';
+          errMsg.style.display = 'block';
+        }
+      } finally {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    function onLiveImgClick(e) {
+      const img = document.getElementById('liveBrowserImg');
+      const rect = img.getBoundingClientRect();
+      const scaleX = img.naturalWidth / rect.width;
+      const scaleY = img.naturalHeight / rect.height;
+
+      const x = Math.round((e.clientX - rect.left) * scaleX);
+      const y = Math.round((e.clientY - rect.top) * scaleY);
+
+      interactLive('click', { x, y });
+    }
+
+    function sendLiveText() {
+      const input = document.getElementById('liveTextInput');
+      const txt = input ? input.value.trim() : '';
+      if (!txt) return;
+      interactLive('type', { text: txt });
+      input.value = '';
+    }
+
+    function sendLiveKey(key) {
+      interactLive('press', { key });
     }
 
     // Save Manual Token

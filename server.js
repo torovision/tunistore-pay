@@ -553,6 +553,91 @@ app.post('/api/admin/kashy-login', async (req, res) => {
   }
 });
 
+// --- LIVE PUPPETEER REMOTE CONTROL ENDPOINTS ---
+
+// Start or reset live browser view
+app.post('/api/admin/browser/start', async (req, res) => {
+  try {
+    console.log('[LiveBrowser] Launching live visual screen...');
+    const page = await getPuppeteerPage();
+    await page.setViewport({ width: 450, height: 750, deviceScaleFactor: 1 });
+    await page.goto('https://app.kashy.tn/en/auth', { waitUntil: 'networkidle2', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 1500));
+
+    const imageBuffer = await page.screenshot({ type: 'jpeg', quality: 65 });
+    const base64 = imageBuffer.toString('base64');
+
+    res.json({ success: true, image: `data:image/jpeg;base64,${base64}` });
+  } catch (err) {
+    console.error('[LiveBrowser] Start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Interact with live browser (click, type, press, extract token)
+app.post('/api/admin/browser/interact', async (req, res) => {
+  const { action, x, y, text, key } = req.body;
+  try {
+    const page = await getPuppeteerPage();
+
+    if (action === 'click' && typeof x === 'number' && typeof y === 'number') {
+      console.log(`[LiveBrowser] Click at (${x}, ${y})`);
+      await page.mouse.click(x, y);
+      await new Promise(r => setTimeout(r, 500));
+    } else if (action === 'type' && text) {
+      console.log(`[LiveBrowser] Type text: "${text}"`);
+      await page.keyboard.type(text, { delay: 30 });
+      await new Promise(r => setTimeout(r, 500));
+    } else if (action === 'press' && key) {
+      console.log(`[LiveBrowser] Press key: "${key}"`);
+      await page.keyboard.press(key);
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    // Check if token became available in storage
+    const extractedToken = await page.evaluate(() => {
+      const keys = ['token', 'auth_token', 'bearer', 'access_token', 'accessToken', 'jwt', 'kashy_token'];
+      for (const k of keys) {
+        const val = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if (val && val.length > 50) return val;
+      }
+      return null;
+    });
+
+    if (extractedToken) {
+      const formatted = extractedToken.trim().startsWith('Bearer ') ? extractedToken.trim() : `Bearer ${extractedToken.trim()}`;
+      activeToken = formatted;
+      process.env.KASHY_AUTH_TOKEN = formatted;
+
+      const expMs = getTokenExpiry(formatted);
+      const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+      puppeteerState = {
+        status: 'connected',
+        message: `Connecté via l'écran en direct ! (~${remainingMinutes || '?'} min)`,
+        phone: puppeteerState.phone || '+21653772707',
+        lastUpdated: Date.now(),
+        lastRefresh: Date.now()
+      };
+
+      startAutoRefreshLoop(puppeteerState.phone);
+    }
+
+    const imageBuffer = await page.screenshot({ type: 'jpeg', quality: 65 });
+    const base64 = imageBuffer.toString('base64');
+
+    res.json({
+      success: true,
+      image: `data:image/jpeg;base64,${base64}`,
+      hasToken: !!extractedToken,
+      tokenState: puppeteerState
+    });
+  } catch (err) {
+    console.error('[LiveBrowser] Interact error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Check Puppeteer / Session Status
 app.get('/api/admin/puppeteer-status', (req, res) => {
   const expMs = getTokenExpiry(activeToken);
