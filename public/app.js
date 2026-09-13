@@ -70,6 +70,8 @@ btnPaste.addEventListener('click', async () => {
 });
 
 // --- LINK INPUT LOGIC ---
+let resolveDebounceTimer = null;
+
 linkInput.addEventListener('input', handleLinkInput);
 linkInput.addEventListener('paste', () => {
   // Small delay to let paste complete
@@ -79,15 +81,46 @@ linkInput.addEventListener('paste', () => {
 function handleLinkInput() {
   const val = linkInput.value.trim();
   errorMsg.classList.add('hidden');
+  clearTimeout(resolveDebounceTimer);
   
-  if (val.length > 3) {
+  if (val.length >= 4) {
     btnPay.disabled = false;
     btnText.textContent = 'Payer maintenant';
+
+    // Auto-resolve preview when pasting or typing code
+    resolveDebounceTimer = setTimeout(() => {
+      autoResolvePreview(val);
+    }, 400);
   } else {
     btnPay.disabled = true;
     btnText.textContent = 'Payer maintenant';
     amountPreview.classList.add('hidden');
+    shareWrapper.classList.add('hidden');
     currentShortId = null;
+  }
+}
+
+async function autoResolvePreview(input) {
+  // Only auto-resolve if user has interacted (not during silent demo)
+  if (!userInteractedWithInput) return;
+  try {
+    const res = await fetch('/api/resolve-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ link: input })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      currentShortId = data.shortId;
+      const amountDT = (data.amount / 1000).toFixed(0);
+      amountValue.textContent = `${amountDT} DT`;
+      amountPreview.classList.remove('hidden');
+      shareWrapper.classList.remove('hidden');
+      gsap.fromTo(amountPreview, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.3 });
+      gsap.fromTo(shareWrapper, { opacity: 0 }, { opacity: 1, duration: 0.3, delay: 0.1 });
+    }
+  } catch (e) {
+    // Ignore preview error, pay button handles explicit errors
   }
 }
 
@@ -179,14 +212,16 @@ btnCloseModal.addEventListener('click', () => {
 
 // --- SHARE LOGIC ---
 btnShare.addEventListener('click', async () => {
-  if (!currentShortId) return;
-  const shareUrl = `${window.location.origin}${window.location.pathname}?link=${currentShortId}`;
+  const code = currentShortId || linkInput.value.trim();
+  if (!code) return;
+
+  const shareUrl = `${window.location.origin}${window.location.pathname}?link=${encodeURIComponent(code)}`;
   
   if (navigator.share) {
     try {
       await navigator.share({
-        title: 'Paiement TunPay',
-        text: 'Payez en ligne en toute sécurité via TunPay.',
+        title: 'Paiement ClicToPay — TunPay',
+        text: 'Payez en ligne en toute sécurité via ClicToPay.',
         url: shareUrl
       });
     } catch (e) {
