@@ -41,9 +41,81 @@ body {
   margin-bottom: 32px; padding: 0 4px;
   opacity: 0;
 }
-.logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 22px; letter-spacing: -0.04em; color: var(--brand-ink); user-select: none; }
-.logo svg { width: 22px; height: 22px; color: var(--brand-ink); }
-.logo span span, .logo .logo-pay { color: var(--gray-500); font-weight: 700; }
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.logo:hover {
+  transform: translateY(-1px);
+}
+.logo-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+.logo:hover .logo-icon-box {
+  box-shadow: 0 12px 28px -4px rgba(202, 255, 0, 0.35), 0 0 0 2px rgba(202, 255, 0, 0.4);
+  transform: scale(1.05) rotate(-2deg);
+}
+.logo-icon-box svg {
+  width: 44px;
+  height: 44px;
+}
+
+.logo-text-wrapper {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--brand-ink);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.logo-pay-pill {
+  background: var(--brand-green);
+  color: var(--brand-ink);
+  font-size: 19px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 8px;
+  letter-spacing: -0.03em;
+  box-shadow: 0 4px 12px rgba(202, 255, 0, 0.35);
+  display: inline-block;
+  transform: rotate(-1.5deg);
+  transition: transform 0.2s ease;
+}
+.logo:hover .logo-pay-pill {
+  transform: rotate(0deg) scale(1.05);
+}
+
+.logo-tagline {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gray-400);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
 .secure-tag {
   display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--brand-ink);
   background: var(--white); border: 1px solid var(--gray-200); padding: 6px 14px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;

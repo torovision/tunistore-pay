@@ -39,9 +39,18 @@
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
       padding-bottom: 16px; border-bottom: 1px solid var(--gray-200);
     }
-    .admin-logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 22px; letter-spacing: -0.04em; }
-    .admin-logo svg { width: 22px; height: 22px; color: var(--brand-ink); }
-    .admin-logo span span { color: var(--gray-500); font-weight: 700; }
+    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; user-select: none; }
+    .logo-icon-box {
+      width: 42px; height: 42px; border-radius: 13px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+    .logo-icon-box svg { width: 42px; height: 42px; }
+    .logo-text-wrapper { display: flex; flex-direction: column; line-height: 1.05; }
+    .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; color: var(--brand-ink); display: flex; align-items: center; gap: 4px; }
+    .logo-pay-pill { background: var(--brand-green); color: var(--brand-ink); font-size: 17px; font-weight: 800; padding: 2px 7px; border-radius: 7px; transform: rotate(-1.5deg); box-shadow: 0 4px 12px rgba(202, 255, 0, 0.35); }
+    .logo-tagline { font-size: 9.5px; font-weight: 700; color: var(--gray-400); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; }
     
     .header-actions { display: flex; align-items: center; gap: 10px; }
     .admin-tag {
@@ -184,10 +193,31 @@
   <div class="admin-container">
     <!-- Top Header -->
     <div class="admin-header">
-      <div class="admin-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-        <span>Tun<span>Pay</span></span>
-      </div>
+      <a href="/" class="logo">
+        <div class="logo-icon-box">
+          <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="adminLogoGrad" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#0f172a"/>
+                <stop offset="1" stop-color="#1e293b"/>
+              </linearGradient>
+              <linearGradient id="adminLogoAccent" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#caff00"/>
+                <stop offset="1" stop-color="#10b981"/>
+              </linearGradient>
+            </defs>
+            <rect width="44" height="44" rx="13" fill="url(#adminLogoGrad)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+            <rect x="10" y="14" width="24" height="17" rx="4" fill="none" stroke="url(#adminLogoAccent)" stroke-width="2.5"/>
+            <path d="M 10 20 H 34" stroke="url(#adminLogoAccent)" stroke-width="2" stroke-opacity="0.8"/>
+            <path d="M 18 25 L 21 28 L 27 21" stroke="#caff00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="34" cy="10" r="3.5" fill="#10b981"/>
+          </svg>
+        </div>
+        <div class="logo-text-wrapper">
+          <span class="logo-text">Tun<span class="logo-pay-pill">Pay</span></span>
+          <span class="logo-tagline">Panneau Admin</span>
+        </div>
+      </a>
       <div class="header-actions">
         <span class="admin-tag">Espace Admin</span>
         <button class="btn-logout hidden" id="btnLogout" onclick="logoutAdmin()">Déconnexion</button>
