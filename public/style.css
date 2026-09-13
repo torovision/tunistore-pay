@@ -642,6 +642,13 @@ footer {
   direction: rtl;
   text-align: right;
 }
+.htp-lang-col.rtl .htp-lang-title {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
 .htp-lang-title {
   font-size: 13.5px;
   font-weight: 800;
