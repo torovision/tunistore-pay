@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - TunPay</title>
+  <title>Administration — TunPay</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11,140 +11,169 @@
     :root {
       --font: 'Plus Jakarta Sans', system-ui, sans-serif;
       --white: #ffffff;
-      --gray-50: #fafafa;
+      --gray-50: #f8fafc;
       --gray-100: #f1f5f9;
       --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
       --gray-400: #94a3b8;
       --gray-500: #64748b;
       --gray-600: #475569;
+      --gray-800: #1e293b;
       --gray-900: #0f172a;
       --brand-green: #caff00;
       --brand-ink: #0d100b;
+      --blue-500: #3b82f6;
+      --blue-600: #2563eb;
+      --emerald-500: #10b981;
+      --red-500: #ef4444;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: var(--font); background: var(--gray-50); color: var(--brand-ink); min-height: 100vh; padding: 32px 16px;
+    body {
+      font-family: var(--font); background: var(--gray-50); color: var(--brand-ink); min-height: 100vh; padding: 24px 16px;
       background-image: radial-gradient(var(--gray-200) 1px, transparent 1px); background-size: 24px 24px;
     }
-    .admin-container { max-width: 640px; margin: 0 auto; }
+    .admin-container { max-width: 768px; margin: 0 auto; }
 
+    /* Header */
     .admin-header {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
+      padding-bottom: 16px; border-bottom: 1px solid var(--gray-200);
     }
-    .admin-logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 20px; letter-spacing: -0.04em; }
-    .admin-logo svg { width: 20px; height: 20px; color: var(--brand-ink); }
+    .admin-logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 22px; letter-spacing: -0.04em; }
+    .admin-logo svg { width: 22px; height: 22px; color: var(--brand-ink); }
     .admin-logo span span { color: var(--gray-500); font-weight: 700; }
+    
+    .header-actions { display: flex; align-items: center; gap: 10px; }
     .admin-tag {
-      font-size: 10px; font-weight: 800; background: var(--brand-ink); color: var(--brand-green);
-      padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.06em;
+      font-size: 11px; font-weight: 800; background: var(--brand-ink); color: var(--brand-green);
+      padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.06em;
     }
+    .btn-logout {
+      background: transparent; border: 1px solid var(--gray-300); color: var(--gray-600);
+      padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover { background: var(--gray-200); color: var(--brand-ink); }
 
+    /* Live Session Banner */
+    .session-banner {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: var(--white); border: 1px solid var(--gray-200); border-radius: 16px;
+      padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .session-banner-left { display: flex; align-items: center; gap: 12px; }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--emerald-500); flex-shrink: 0; }
+    .status-dot.expired { background: var(--red-500); animation: pulse-red 1.5s infinite; }
+    @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
+    .session-title { font-size: 14px; font-weight: 800; color: var(--brand-ink); }
+    .session-subtitle { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+    .session-badge {
+      font-size: 13px; font-weight: 800; color: var(--emerald-500);
+      background: rgba(16,185,129,0.1); padding: 5px 12px; border-radius: 8px;
+    }
+    .session-badge.expired { color: var(--red-500); background: rgba(239,68,68,0.1); }
+
+    /* Tab Navigation */
+    .tabs-nav {
+      display: flex; gap: 6px; background: var(--gray-200); padding: 4px; border-radius: 14px; margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 14px; border: none; background: transparent; border-radius: 10px;
+      font-family: var(--font); font-size: 13px; font-weight: 700; color: var(--gray-600);
+      cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .tab-btn.active {
+      background: var(--white); color: var(--brand-ink); box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .tab-btn:hover:not(.active) { color: var(--brand-ink); }
+
+    /* Cards */
     .card {
       background: var(--white); border: 1px solid var(--gray-200); border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;
     }
     .card-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 18px 24px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50);
     }
-    .card-header-title { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .card-header-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--brand-ink); }
     .card-body { padding: 24px; }
 
-    /* Token Badge */
-    .token-badge-lg {
-      display: flex; align-items: center; gap: 10px; padding: 14px 20px;
-      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 14px;
-      margin-bottom: 16px;
-    }
-    .token-dot-lg { width: 10px; height: 10px; border-radius: 50%; background: #10b981; flex-shrink: 0; }
-    .token-dot-lg.expired { background: #ef4444; animation: pulse-red 1.5s infinite; }
-    @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
-    .token-info { flex: 1; }
-    .token-label { font-size: 13px; font-weight: 700; color: var(--brand-ink); }
-    .token-sublabel { font-size: 11.5px; color: var(--gray-500); font-weight: 500; margin-top: 2px; }
-    .token-time {
-      font-size: 13px; font-weight: 800; color: #10b981;
-      background: rgba(16,185,129,0.1); padding: 4px 10px; border-radius: 8px;
-    }
-    .token-time.expired { color: #ef4444; background: rgba(239,68,68,0.1); }
-
     /* Forms */
+    .form-group { margin-bottom: 16px; }
     .form-label { font-size: 13px; font-weight: 700; color: var(--brand-ink); margin-bottom: 6px; display: block; }
+    .form-input {
+      width: 100%; padding: 12px 14px; border: 2px solid var(--gray-200); border-radius: 12px;
+      font-family: var(--font); font-size: 14px; font-weight: 500; outline: none; transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--blue-500); }
     .form-textarea {
       width: 100%; padding: 12px; border: 2px solid var(--gray-200); border-radius: 12px;
-      font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; outline: none;
-      resize: vertical; min-height: 64px; transition: border-color 0.2s;
+      font-family: monospace; font-size: 11.5px; outline: none; resize: vertical; min-height: 72px; transition: border-color 0.2s;
     }
-    .form-textarea:focus { border-color: var(--brand-green); }
-    .form-input {
-      width: 100%; padding: 10px 12px; border: 2px solid var(--gray-200); border-radius: 10px;
-      font-family: var(--font); font-size: 14px; font-weight: 500; outline: none;
-    }
-    .form-input:focus { border-color: var(--brand-green); }
+    .form-textarea:focus { border-color: var(--blue-500); }
 
     .btn-primary {
       width: 100%; background: var(--brand-green); color: var(--brand-ink); border: none;
-      padding: 14px; border-radius: 999px; font-size: 15px; font-weight: 700;
+      padding: 14px; border-radius: 999px; font-size: 15px; font-weight: 800;
       cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: all 0.2s; margin-top: 12px;
+      transition: all 0.2s; margin-top: 8px;
     }
     .btn-primary:hover { filter: brightness(0.95); transform: translateY(-1px); }
-    .btn-primary:disabled { background: var(--gray-100); color: var(--gray-400); cursor: not-allowed; }
-
-    .btn-outline {
-      background: transparent; border: 2px solid var(--gray-200); color: var(--brand-ink);
-      padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700;
-      cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
-    }
-    .btn-outline:hover { border-color: var(--brand-ink); }
+    .btn-primary:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; transform: none; }
+    .btn-blue { background: var(--blue-600); color: var(--white); }
+    .btn-blue:hover { background: #1d4ed8; }
+    .btn-emerald { background: var(--emerald-500); color: var(--white); }
+    .btn-emerald:hover { background: #059669; }
 
     .success-msg {
-      text-align: center; color: #059669; font-size: 13px; font-weight: 600;
-      background: #ecfdf5; padding: 10px 16px; border-radius: 10px; margin-top: 10px; display: none;
+      text-align: center; color: #059669; font-size: 13px; font-weight: 700;
+      background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px 16px; border-radius: 12px; margin-top: 14px; display: none;
     }
     .error-msg {
-      text-align: center; color: #ef4444; font-size: 13px; font-weight: 600;
-      background: #fef2f2; padding: 10px 16px; border-radius: 10px; margin-top: 10px; display: none;
+      text-align: center; color: var(--red-500); font-size: 13px; font-weight: 700;
+      background: #fef2f2; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 12px; margin-top: 14px; display: none;
     }
 
-    /* Bookmarklet Box */
+    /* Bookmarklet */
     .bookmarklet-box {
-      background: var(--gray-50); border: 1px dashed var(--gray-200);
-      border-radius: 14px; padding: 16px; margin-top: 16px;
+      background: var(--gray-50); border: 1px dashed var(--gray-300);
+      border-radius: 14px; padding: 18px; margin-top: 20px;
     }
-    .bookmarklet-box h4 { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
-    .bookmarklet-box p { font-size: 12px; color: var(--gray-500); line-height: 1.45; margin-bottom: 10px; }
+    .bookmarklet-box h4 { font-size: 13.5px; font-weight: 800; margin-bottom: 6px; }
+    .bookmarklet-box p { font-size: 12.5px; color: var(--gray-500); line-height: 1.5; margin-bottom: 12px; }
     .bookmarklet-link {
       display: inline-flex; align-items: center; gap: 6px;
-      background: var(--brand-ink); color: var(--white); padding: 8px 14px;
-      border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none;
+      background: var(--brand-ink); color: var(--white); padding: 9px 16px;
+      border-radius: 10px; font-size: 12px; font-weight: 800; text-decoration: none; transition: transform 0.2s;
     }
+    .bookmarklet-link:hover { transform: translateY(-1px); }
 
-    /* Auth Box */
-    .auth-card { text-align: center; }
-    .auth-card input { margin-bottom: 12px; }
-
-    /* Grid */
+    /* Amounts Grid */
     .amounts-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;
     }
-    .amount-item {
-      display: flex; flex-direction: column; gap: 6px;
+    .amount-card {
+      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 14px; padding: 14px;
+      display: flex; flex-direction: column; gap: 8px; transition: border-color 0.2s;
     }
-    .amount-item label { font-size: 13px; font-weight: 700; }
-    .amount-item input {
-      padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px;
-      font-family: monospace; font-size: 13px;
+    .amount-card:hover { border-color: var(--gray-300); }
+    .amount-card-title { font-size: 14px; font-weight: 800; color: var(--brand-ink); display: flex; justify-content: space-between; }
+    .amount-card-input {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--gray-300); border-radius: 8px;
+      font-family: monospace; font-size: 13px; font-weight: 600; outline: none;
     }
-    .amount-item button {
-      padding: 7px; background: #3b82f6; color: white; border: none; border-radius: 8px;
-      font-size: 12px; font-weight: 700; cursor: pointer;
+    .amount-card-btn {
+      width: 100%; padding: 8px; background: var(--blue-600); color: white; border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 800; cursor: pointer; transition: background 0.2s;
     }
-    .amount-item button:hover { background: #2563eb; }
+    .amount-card-btn:hover { background: #1d4ed8; }
 
+    /* Toast */
     .toast {
-      position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white;
-      padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: 14px;
-      display: none; box-shadow: 0 8px 24px rgba(16,185,129,0.3); z-index: 999;
+      position: fixed; bottom: 24px; right: 24px; background: var(--emerald-500); color: white;
+      padding: 12px 24px; border-radius: 12px; font-weight: 800; font-size: 14px;
+      display: none; box-shadow: 0 10px 30px rgba(16,185,129,0.35); z-index: 999;
     }
 
     .hidden { display: none !important; }
@@ -153,122 +182,155 @@
 <body>
 
   <div class="admin-container">
-    <!-- Header -->
+    <!-- Top Header -->
     <div class="admin-header">
       <div class="admin-logo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
         <span>Tun<span>Pay</span></span>
       </div>
-      <span class="admin-tag">Admin</span>
+      <div class="header-actions">
+        <span class="admin-tag">Espace Admin</span>
+        <button class="btn-logout hidden" id="btnLogout" onclick="logoutAdmin()">Déconnexion</button>
+      </div>
     </div>
 
-    <!-- Auth Card -->
-    <div class="card" id="authCard">
+    <!-- Auth Card (shown before password) -->
+    <div class="card" id="authCard" style="max-width:440px;margin:40px auto 0;">
       <div class="card-header">
         <div class="card-header-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          Authentification
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Accès Sécurisé
         </div>
       </div>
-      <form class="card-body auth-card" onsubmit="event.preventDefault(); checkAuth();">
-        <label class="form-label" for="pwd">Mot de passe administrateur</label>
-        <input type="password" id="pwd" class="form-input" placeholder="Mot de passe" style="max-width:320px;margin:0 auto 12px;" onkeyup="if(event.key==='Enter') checkAuth();">
-        <br>
-        <button type="submit" class="btn-primary" style="max-width:320px;margin:0 auto;">Connexion</button>
+      <form class="card-body" onsubmit="event.preventDefault(); checkAuth();">
+        <div class="form-group">
+          <label class="form-label" for="pwd">Mot de passe administrateur</label>
+          <input type="password" id="pwd" class="form-input" placeholder="Entrez le mot de passe" autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-primary">Se connecter &rarr;</button>
         <div class="error-msg" id="authError">Mot de passe incorrect</div>
       </form>
     </div>
 
-    <!-- Admin Content (hidden until auth) -->
+    <!-- Admin Content (hidden until password validated) -->
     <div id="adminContent" class="hidden">
 
-      <!-- Automated Kashy Login (SMS OTP) -->
-      <div class="card" style="border:2px solid #3b82f6;">
-        <div class="card-header" style="background:#eff6ff;">
-          <div class="card-header-title" style="color:#1d4ed8;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>
-            Connexion Automatique Kashy (SMS OTP)
+      <!-- Live Session Banner -->
+      <div class="session-banner">
+        <div class="session-banner-left">
+          <span class="status-dot" id="bannerDot"></span>
+          <div>
+            <div class="session-title" id="bannerTitle">Vérification de la session...</div>
+            <div class="session-subtitle" id="bannerSubtitle">Mise à jour automatique toutes les 60s</div>
           </div>
         </div>
-        <div class="card-body">
-          <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px;line-height:1.5;">
-            Connectez votre compte Kashy directement depuis le serveur. Entrez votre numéro de téléphone pour recevoir le code SMS, validez-le, et le serveur gardera votre session active en arrière-plan.
-          </p>
-
-          <!-- Step 1: Phone & Request SMS -->
-          <div id="otpStep1">
-            <label class="form-label" for="phoneInput">Numéro de téléphone Kashy</label>
-            <input type="text" id="phoneInput" class="form-input" value="+21653772707" placeholder="+216 53 772 707">
-            <button class="btn-primary" id="btnSendSms" style="background:#2563eb;color:white;margin-top:10px;">
-              📲 Demander le code SMS OTP
-            </button>
-          </div>
-
-          <!-- Step 2: Input OTP (hidden initially) -->
-          <div id="otpStep2" class="hidden" style="margin-top:16px;background:#f8fafc;padding:16px;border-radius:14px;border:1px solid #cbd5e1;">
-            <label class="form-label" for="otpInput" style="color:#0f172a;">Entrez le code SMS reçu sur votre téléphone</label>
-            <input type="text" id="otpInput" class="form-input" placeholder="ex: 310967" style="font-size:18px;letter-spacing:4px;text-align:center;font-weight:800;">
-            <button class="btn-primary" id="btnVerifyOtp" style="background:#10b981;color:white;margin-top:12px;">
-              ✅ Valider le code SMS & Activer la Session
-            </button>
-          </div>
-
-          <div class="success-msg" id="otpSuccessMsg"></div>
-          <div class="error-msg" id="otpErrorMsg"></div>
-        </div>
+        <span class="session-badge" id="bannerTime">--</span>
       </div>
 
-      <!-- Token Management Card -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-header-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Session Kashy (Manuel)
-          </div>
-        </div>
-        <div class="card-body">
-          <!-- Live Token Status Badge -->
-          <div class="token-badge-lg" id="tokenBadgeLg">
-            <span class="token-dot-lg" id="tokenDotLg"></span>
-            <div class="token-info">
-              <div class="token-label" id="tokenLabelLg">Vérification...</div>
-              <div class="token-sublabel" id="tokenSublabelLg">Mise à jour automatique toutes les 60s</div>
+      <!-- Tab Navigation -->
+      <div class="tabs-nav">
+        <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">
+          ⚡ Connexion SMS OTP
+        </button>
+        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">
+          🔑 Jeton Manuel & Sync
+        </button>
+        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">
+          🔗 Liens de Paiement
+        </button>
+      </div>
+
+      <!-- TAB 1: Automated Kashy Login (SMS OTP) -->
+      <div class="tab-content" id="tab1">
+        <div class="card" style="border:2px solid var(--blue-500);">
+          <div class="card-header" style="background:#eff6ff;">
+            <div class="card-header-title" style="color:var(--blue-600);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>
+              Connexion Automatique Kashy (SMS OTP)
             </div>
-            <span class="token-time" id="tokenTimeLg">--</span>
           </div>
-
-          <!-- Token Update Form -->
-          <label class="form-label" for="tokenInput">Jeton Bearer Kashy</label>
-          <textarea id="tokenInput" class="form-textarea" rows="3" placeholder="Bearer eyJhbGci..."></textarea>
-
-          <button class="btn-primary" id="btnSaveToken">
-            Mettre à jour le jeton
-          </button>
-          <div class="success-msg" id="tokenSuccessMsg">Jeton mis à jour avec succès !</div>
-
-          <!-- Bookmarklet -->
-          <div class="bookmarklet-box">
-            <h4>⚡ Synchronisation 1-Clic</h4>
-            <p>
-              Glissez ce bouton vers votre barre de favoris. Sur <strong>app.kashy.tn</strong>, cliquez dessus pour synchroniser automatiquement votre jeton !
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--gray-600);margin-bottom:18px;line-height:1.5;">
+              Connectez votre compte Kashy directement depuis le serveur. Entrez votre numéro de téléphone pour recevoir le code SMS, validez-le, et le serveur gardera votre session active en arrière-plan.
             </p>
-            <a id="bookmarkletBtn" href="#" class="bookmarklet-link" onclick="alert('Glissez ce bouton vers votre barre de favoris !'); return false;">
-              ⚡ Sync Kashy Token
-            </a>
+
+            <!-- Step 1: Phone -->
+            <div id="otpStep1">
+              <div class="form-group">
+                <label class="form-label" for="phoneInput">Numéro de téléphone Kashy</label>
+                <input type="text" id="phoneInput" class="form-input" value="+21653772707" placeholder="+216 53 772 707">
+              </div>
+              <button class="btn-primary btn-blue" id="btnSendSms">
+                📲 Demander le code SMS OTP
+              </button>
+            </div>
+
+            <!-- Step 2: OTP Input (hidden initially) -->
+            <div id="otpStep2" class="hidden" style="margin-top:16px;background:#f8fafc;padding:18px;border-radius:14px;border:1.5px solid var(--blue-500);">
+              <div class="form-group">
+                <label class="form-label" for="otpInput" style="color:var(--gray-900);">Entrez le code SMS reçu sur votre téléphone</label>
+                <input type="text" id="otpInput" class="form-input" placeholder="ex: 310967" style="font-size:20px;letter-spacing:6px;text-align:center;font-weight:800;">
+              </div>
+              <button class="btn-primary btn-emerald" id="btnVerifyOtp">
+                ✅ Valider le code SMS & Activer la Session
+              </button>
+            </div>
+
+            <div class="success-msg" id="otpSuccessMsg"></div>
+            <div class="error-msg" id="otpErrorMsg"></div>
           </div>
         </div>
       </div>
 
-      <!-- Amounts Management Card -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-header-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-            Liens de paiement
+      <!-- TAB 2: Manual Token Update & Bookmarklet -->
+      <div class="tab-content hidden" id="tab2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Mise à jour Manuelle du Jeton
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label" for="tokenInput">Jeton Bearer Kashy</label>
+              <textarea id="tokenInput" class="form-textarea" rows="3" placeholder="Bearer eyJhbGci..."></textarea>
+            </div>
+
+            <button class="btn-primary" id="btnSaveToken">
+              💾 Enregistrer le jeton
+            </button>
+            <div class="success-msg" id="tokenSuccessMsg">Jeton mis à jour avec succès !</div>
+
+            <!-- Bookmarklet -->
+            <div class="bookmarklet-box">
+              <h4>⚡ Synchronisation 1-Clic via Favoris</h4>
+              <p>
+                Glissez ce bouton vers votre barre de favoris. Lorsque vous êtes connecté sur <strong>app.kashy.tn</strong>, cliquez dessus pour synchroniser votre session avec TunPay en 1 clic !
+              </p>
+              <a id="bookmarkletBtn" href="#" class="bookmarklet-link" onclick="alert('Glissez ce bouton vers votre barre de favoris !'); return false;">
+                ⚡ Sync Kashy Token
+              </a>
+            </div>
           </div>
         </div>
-        <div class="card-body">
-          <div class="amounts-grid" id="adminGrid"></div>
+      </div>
+
+      <!-- TAB 3: Pre-configured Amount Links -->
+      <div class="tab-content hidden" id="tab3">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Configuration des Liens de Paiement (Short IDs)
+            </div>
+          </div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;">
+              Associez des ID Kashy pré-générés pour des montants spécifiques (fallback hors ligne).
+            </p>
+            <div class="amounts-grid" id="adminGrid"></div>
+          </div>
         </div>
       </div>
 
@@ -282,143 +344,177 @@
     const grid = document.getElementById('adminGrid');
     const toast = document.getElementById('toast');
 
+    // Tab Switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      
+      const targetTab = document.getElementById(tabId);
+      const targetBtn = document.getElementById(tabId + 'Btn');
+      if (targetTab) targetTab.classList.remove('hidden');
+      if (targetBtn) targetBtn.classList.add('active');
+    }
+
+    // Password Check
     function checkAuth() {
-      const pwd = document.getElementById('pwd').value.trim();
+      const pwdInput = document.getElementById('pwd');
+      const pwd = pwdInput ? pwdInput.value.trim() : '';
+      
       if (pwd.toLowerCase() === 'battan25') {
         document.getElementById('authCard').classList.add('hidden');
         document.getElementById('adminContent').classList.remove('hidden');
+        document.getElementById('btnLogout').classList.remove('hidden');
         renderGrid();
         updateTokenStatus();
-        setInterval(updateTokenStatus, 60000);
+        setInterval(updateTokenStatus, 30000);
       } else {
-        document.getElementById('authError').style.display = 'block';
+        const err = document.getElementById('authError');
+        if (err) err.style.display = 'block';
       }
     }
 
-    // --- Token Status ---
+    function logoutAdmin() {
+      document.getElementById('adminContent').classList.add('hidden');
+      document.getElementById('btnLogout').classList.add('hidden');
+      document.getElementById('authCard').classList.remove('hidden');
+      document.getElementById('pwd').value = '';
+    }
+
+    // Live Token Status
     async function updateTokenStatus() {
       try {
         const res = await fetch('/api/token-status');
         const data = await res.json();
-        const dot = document.getElementById('tokenDotLg');
-        const label = document.getElementById('tokenLabelLg');
-        const sublabel = document.getElementById('tokenSublabelLg');
-        const time = document.getElementById('tokenTimeLg');
+        const dot = document.getElementById('bannerDot');
+        const title = document.getElementById('bannerTitle');
+        const sublabel = document.getElementById('bannerSubtitle');
+        const time = document.getElementById('bannerTime');
+
+        if (!dot || !title || !sublabel || !time) return;
 
         if (data.active && data.remainingMinutes > 0) {
-          dot.className = 'token-dot-lg';
-          label.textContent = 'Kashy connecté';
+          dot.className = 'status-dot';
+          title.textContent = 'Session Kashy Active & Synchronisée';
           sublabel.textContent = `Expire à ${new Date(data.expiresAt).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
-          time.textContent = `${data.remainingMinutes} min`;
-          time.className = 'token-time';
+          time.textContent = `${data.remainingMinutes} min restante`;
+          time.className = 'session-badge';
         } else {
-          dot.className = 'token-dot-lg expired';
-          label.textContent = 'Session Kashy expirée';
-          sublabel.textContent = 'Collez un nouveau jeton ci-dessous';
+          dot.className = 'status-dot expired';
+          title.textContent = 'Session Kashy Expirée';
+          sublabel.textContent = 'Demandez un code SMS ou collez un jeton';
           time.textContent = 'Expiré';
-          time.className = 'token-time expired';
+          time.className = 'session-badge expired';
         }
       } catch (e) {}
     }
 
-    // --- Automated Login Handlers ---
+    // Automated SMS Login Handlers
     const btnSendSms = document.getElementById('btnSendSms');
     const btnVerifyOtp = document.getElementById('btnVerifyOtp');
     const otpStep2 = document.getElementById('otpStep2');
     const otpSuccessMsg = document.getElementById('otpSuccessMsg');
     const otpErrorMsg = document.getElementById('otpErrorMsg');
 
-    btnSendSms.addEventListener('click', async () => {
-      const phone = document.getElementById('phoneInput').value.trim();
-      if (!phone) return alert('Veuillez entrer un numéro de téléphone.');
+    if (btnSendSms) {
+      btnSendSms.addEventListener('click', async () => {
+        const phone = document.getElementById('phoneInput').value.trim();
+        if (!phone) return alert('Veuillez entrer un numéro de téléphone.');
 
-      btnSendSms.disabled = true;
-      btnSendSms.textContent = 'Envoi du SMS en cours...';
-      otpErrorMsg.style.display = 'none';
-      otpSuccessMsg.style.display = 'none';
+        btnSendSms.disabled = true;
+        btnSendSms.textContent = 'Envoi du SMS en cours...';
+        otpErrorMsg.style.display = 'none';
+        otpSuccessMsg.style.display = 'none';
 
-      try {
-        const res = await fetch('/api/admin/kashy-initiate-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone })
-        });
-        const data = await res.json();
+        try {
+          const res = await fetch('/api/admin/kashy-initiate-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+          });
+          const data = await res.json();
 
-        if (res.ok) {
-          otpStep2.classList.remove('hidden');
-          otpSuccessMsg.textContent = data.message || 'SMS envoyé ! Entrez le code ci-dessous.';
-          otpSuccessMsg.style.display = 'block';
-          btnSendSms.textContent = '📲 Renvoyer le SMS OTP';
-        } else {
-          otpErrorMsg.textContent = data.error || 'Erreur lors de l\'envoi du SMS.';
+          if (res.ok) {
+            otpStep2.classList.remove('hidden');
+            otpSuccessMsg.textContent = data.message || 'SMS envoyé ! Entrez le code ci-dessous.';
+            otpSuccessMsg.style.display = 'block';
+            btnSendSms.textContent = '📲 Renvoyer le SMS OTP';
+          } else {
+            otpErrorMsg.textContent = data.error || 'Erreur lors de l\'envoi du SMS.';
+            otpErrorMsg.style.display = 'block';
+          }
+        } catch (e) {
+          otpErrorMsg.textContent = 'Erreur de connexion au serveur.';
           otpErrorMsg.style.display = 'block';
+        } finally {
+          btnSendSms.disabled = false;
         }
-      } catch (e) {
-        otpErrorMsg.textContent = 'Erreur de connexion au serveur.';
-        otpErrorMsg.style.display = 'block';
-      } finally {
-        btnSendSms.disabled = false;
-      }
-    });
+      });
+    }
 
-    btnVerifyOtp.addEventListener('click', async () => {
-      const otpCode = document.getElementById('otpInput').value.trim();
-      if (!otpCode) return alert('Veuillez entrer le code OTP.');
+    if (btnVerifyOtp) {
+      btnVerifyOtp.addEventListener('click', async () => {
+        const otpCode = document.getElementById('otpInput').value.trim();
+        if (!otpCode) return alert('Veuillez entrer le code OTP.');
 
-      btnVerifyOtp.disabled = true;
-      btnVerifyOtp.textContent = 'Validation et connexion...';
-      otpErrorMsg.style.display = 'none';
-      otpSuccessMsg.style.display = 'none';
+        btnVerifyOtp.disabled = true;
+        btnVerifyOtp.textContent = 'Validation et connexion...';
+        otpErrorMsg.style.display = 'none';
+        otpSuccessMsg.style.display = 'none';
 
-      try {
-        const res = await fetch('/api/admin/kashy-submit-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ otpCode })
-        });
-        const data = await res.json();
+        try {
+          const res = await fetch('/api/admin/kashy-submit-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ otpCode })
+          });
+          const data = await res.json();
 
-        if (res.ok) {
-          otpSuccessMsg.textContent = `⚡ Connecté avec succès ! Jeton actif (~${data.remainingMinutes || '?'} min)`;
-          otpSuccessMsg.style.display = 'block';
-          updateTokenStatus();
-        } else {
-          otpErrorMsg.textContent = data.error || 'Code OTP invalide.';
+          if (res.ok) {
+            otpSuccessMsg.textContent = `⚡ Connecté avec succès ! Jeton actif (~${data.remainingMinutes || '?'} min)`;
+            otpSuccessMsg.style.display = 'block';
+            updateTokenStatus();
+          } else {
+            otpErrorMsg.textContent = data.error || 'Code OTP invalide.';
+            otpErrorMsg.style.display = 'block';
+          }
+        } catch (e) {
+          otpErrorMsg.textContent = 'Erreur serveur lors de la validation.';
           otpErrorMsg.style.display = 'block';
+        } finally {
+          btnVerifyOtp.disabled = false;
         }
-      } catch (e) {
-        otpErrorMsg.textContent = 'Erreur serveur lors de la validation.';
-        otpErrorMsg.style.display = 'block';
-      } finally {
-        btnVerifyOtp.disabled = false;
-      }
-    });
-    document.getElementById('btnSaveToken').addEventListener('click', async () => {
-      const val = document.getElementById('tokenInput').value.trim();
-      if (!val) return;
-      try {
-        const res = await fetch('/api/update-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: val })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          const msg = document.getElementById('tokenSuccessMsg');
-          msg.textContent = data.remainingMinutes
-            ? `Jeton mis à jour avec succès (~${data.remainingMinutes} min restantes) !`
-            : 'Jeton mis à jour avec succès !';
-          msg.style.display = 'block';
-          updateTokenStatus();
-          setTimeout(() => msg.style.display = 'none', 3000);
-        } else {
-          alert(data.error || 'Erreur');
-        }
-      } catch (e) { alert('Erreur serveur'); }
-    });
+      });
+    }
 
-    // --- Bookmarklet ---
+    // Save Manual Token
+    const btnSaveToken = document.getElementById('btnSaveToken');
+    if (btnSaveToken) {
+      btnSaveToken.addEventListener('click', async () => {
+        const val = document.getElementById('tokenInput').value.trim();
+        if (!val) return;
+        try {
+          const res = await fetch('/api/update-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: val })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            const msg = document.getElementById('tokenSuccessMsg');
+            msg.textContent = data.remainingMinutes
+              ? `Jeton mis à jour avec succès (~${data.remainingMinutes} min restantes) !`
+              : 'Jeton mis à jour avec succès !';
+            msg.style.display = 'block';
+            updateTokenStatus();
+            setTimeout(() => msg.style.display = 'none', 3000);
+          } else {
+            alert(data.error || 'Erreur');
+          }
+        } catch (e) { alert('Erreur serveur'); }
+      });
+    }
+
+    // Bookmarklet
     const bookmarkletBtn = document.getElementById('bookmarkletBtn');
     if (bookmarkletBtn) {
       const origin = window.location.origin;
@@ -426,22 +522,28 @@
       bookmarkletBtn.setAttribute('href', code);
     }
 
-    // --- Amounts Grid ---
+    // Amounts Grid
     function renderGrid() {
+      if (!grid) return;
+      grid.innerHTML = '';
       amounts.forEach(amt => {
         const div = document.createElement('div');
-        div.className = 'amount-item';
+        div.className = 'amount-card';
         div.innerHTML = `
-          <label>${amt} DT (Kashy ID)</label>
-          <input type="text" id="input-${amt}" placeholder="ex: 0xqgxm">
-          <button onclick="updateLink(${amt})">Mettre à jour</button>
+          <div class="amount-card-title">
+            <span>${amt} DT</span>
+            <span style="font-size:11px;color:var(--gray-400);font-weight:600;">Kashy ID</span>
+          </div>
+          <input type="text" id="input-${amt}" class="amount-card-input" placeholder="ex: 0xqgxm">
+          <button class="amount-card-btn" onclick="updateLink(${amt})">Enregistrer</button>
         `;
         grid.appendChild(div);
       });
     }
 
     async function updateLink(amt) {
-      const val = document.getElementById(`input-${amt}`).value.trim();
+      const inputEl = document.getElementById(`input-${amt}`);
+      const val = inputEl ? inputEl.value.trim() : '';
       if (!val) return alert('Veuillez entrer un ID Kashy');
       try {
         const res = await fetch('/api/admin/update', {
