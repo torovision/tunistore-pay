@@ -355,21 +355,41 @@
       if (targetBtn) targetBtn.classList.add('active');
     }
 
-    // Password Check
-    function checkAuth() {
+    // Password Check (Secure Server API Call)
+    async function checkAuth() {
       const pwdInput = document.getElementById('pwd');
       const pwd = pwdInput ? pwdInput.value.trim() : '';
-      
-      if (pwd.toLowerCase() === 'battan25') {
-        document.getElementById('authCard').classList.add('hidden');
-        document.getElementById('adminContent').classList.remove('hidden');
-        document.getElementById('btnLogout').classList.remove('hidden');
-        renderGrid();
-        updateTokenStatus();
-        setInterval(updateTokenStatus, 30000);
-      } else {
-        const err = document.getElementById('authError');
-        if (err) err.style.display = 'block';
+      const err = document.getElementById('authError');
+      if (err) err.style.display = 'none';
+
+      if (!pwd) return;
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          document.getElementById('authCard').classList.add('hidden');
+          document.getElementById('adminContent').classList.remove('hidden');
+          document.getElementById('btnLogout').classList.remove('hidden');
+          renderGrid();
+          updateTokenStatus();
+          setInterval(updateTokenStatus, 30000);
+        } else {
+          if (err) {
+            err.textContent = data.error || 'Mot de passe incorrect.';
+            err.style.display = 'block';
+          }
+        }
+      } catch (e) {
+        if (err) {
+          err.textContent = 'Erreur de connexion au serveur.';
+          err.style.display = 'block';
+        }
       }
     }
 

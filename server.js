@@ -104,6 +104,22 @@ async function handleApi(shortId) {
 
 // --- API ROUTES ---
 
+// --- ADMIN AUTHENTICATION ---
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Battan25';
+
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Mot de passe requis.' });
+  }
+
+  if (password.trim().toLowerCase() === ADMIN_PASSWORD.toLowerCase()) {
+    return res.json({ success: true, message: 'Authentification réussie.' });
+  } else {
+    return res.status(401).json({ error: 'Mot de passe incorrect.' });
+  }
+});
+
 // Keep-alive ping
 app.get('/api/ping', (req, res) => {
   res.json({ alive: true, ts: Date.now() });
