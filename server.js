@@ -153,43 +153,33 @@ app.post('/api/create-link-by-amount', async (req, res) => {
   if (authToken) {
     const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
     
-    // Candidate endpoints Kashy uses for link creation
-    const candidateEndpoints = [
-      'https://api.kashy.tn/api/v1/payments/links',
-      `https://api.kashy.tn/api/v1/payments/links/wallets/${walletId}`,
-      `https://api.kashy.tn/api/v1/wallets/${walletId}/payment-links`
-    ];
+    try {
+      const r = await fetch('https://api.kashy.tn/api/v1/payments/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: JSON.stringify({
+          walletId,
+          amount: amountMillimes,
+          description: `Paiement ${numAmount} DT via TunPay`
+        })
+      });
 
-    for (const url of candidateEndpoints) {
-      try {
-        const r = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': authHeader
-          },
-          body: JSON.stringify({
-            walletId,
-            wallet: walletId,
-            amount: amountMillimes,
-            description: `Paiement ${numAmount} DT via TunPay`,
-            title: `Paiement ${numAmount} DT`
-          })
-        });
-
-        if (r.ok) {
-          const data = await r.json();
-          const shortId = data.shortId || data.id || data.code || data._id;
-          if (shortId) {
-            const apiRes = await handleApi(shortId);
-            return res.json({ shortId, ...apiRes, amount: amountMillimes });
-          }
-        } else {
-          console.error(`Kashy link creation attempt on ${url} failed (${r.status}):`, await r.text());
+      if (r.ok) {
+        const data = await r.json();
+        const shortId = data.shortId || data.id || data.code;
+        if (shortId) {
+          const apiRes = await handleApi(shortId);
+          return res.json({ shortId, ...apiRes, amount: amountMillimes });
         }
-      } catch (e) {
-        console.error(`Kashy link creation error on ${url}:`, e);
+      } else {
+        const errText = await r.text();
+        console.error('Kashy payments/request error status:', r.status, errText);
       }
+    } catch (e) {
+      console.error('Kashy link creation error:', e);
     }
   }
 
