@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import 'dotenv/config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+process.env.PUPPETEER_CACHE_DIR = join(__dirname, '.cache', 'puppeteer');
 const PORT = process.env.PORT || 3010;
 const LINKS_FILE = join(__dirname, 'links.json');
 let activeToken = process.env.KASHY_AUTH_TOKEN || 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTMxY2U3ZjliZTgyNTZjMzY1Y2JmZGQiLCJyb2xlIjoiY2xpZW50Iiwic3RhdHVzIjoidmVyaWZpZWQiLCJlbWFpbCI6ImNoaWhlYmVsb3VuaTZAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrMjE2NTM3NzI3MDciLCJpYXQiOjE3ODkzMTk2NTEsImV4cCI6MTc4OTMyMTQ1MX0.oDPeccCVmwGanTG3dwP9tDBFIuQbxhseATPzPkuzJbU';
@@ -153,6 +154,23 @@ let puppeteerState = {
   lastUpdated: null
 };
 
+function findProjectChromeExecutable() {
+  try {
+    const cacheDir = join(__dirname, '.cache', 'puppeteer', 'chrome');
+    if (fs.existsSync(cacheDir)) {
+      const dirs = fs.readdirSync(cacheDir);
+      for (const d of dirs) {
+        const winPath = join(cacheDir, d, 'chrome-win64', 'chrome.exe');
+        const linuxPath = join(cacheDir, d, 'chrome-linux64', 'chrome');
+        if (process.platform === 'win32' && fs.existsSync(winPath)) return winPath;
+        if (fs.existsSync(linuxPath)) return linuxPath;
+        if (fs.existsSync(winPath)) return winPath;
+      }
+    }
+  } catch(e) {}
+  return null;
+}
+
 async function getPuppeteerPage() {
   if (!puppeteerBrowser || !puppeteerBrowser.isConnected()) {
     let puppeteer;
@@ -172,37 +190,39 @@ async function getPuppeteerPage() {
       '--single-process'
     ];
 
-    try {
-      puppeteerBrowser = await puppeteer.default.launch({
-        headless: true,
-        args: launchArgs
-      });
-    } catch (err) {
-      console.warn('Standard Puppeteer launch failed, checking system Chrome binaries...', err.message);
-      const possiblePaths = [
-        process.env.PUPPETEER_EXECUTABLE_PATH,
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        '/usr/bin/google-chrome-stable'
-      ].filter(Boolean);
+    const projectChromePath = findProjectChromeExecutable();
+    const possiblePaths = [
+      projectChromePath,
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      '/opt/render/.cache/puppeteer',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/usr/bin/google-chrome-stable'
+    ].filter(Boolean);
 
-      let launched = false;
-      for (const execPath of possiblePaths) {
-        if (fs.existsSync(execPath)) {
-          try {
-            puppeteerBrowser = await puppeteer.default.launch({
-              executablePath: execPath,
-              headless: true,
-              args: launchArgs
-            });
-            launched = true;
-            break;
-          } catch (e) {}
-        }
+    let launched = false;
+    for (const execPath of possiblePaths) {
+      if (fs.existsSync(execPath)) {
+        try {
+          puppeteerBrowser = await puppeteer.default.launch({
+            executablePath: execPath,
+            headless: true,
+            args: launchArgs
+          });
+          launched = true;
+          break;
+        } catch (e) {}
       }
+    }
 
-      if (!launched) {
+    if (!launched) {
+      try {
+        puppeteerBrowser = await puppeteer.default.launch({
+          headless: true,
+          args: launchArgs
+        });
+      } catch (err) {
         throw new Error(`Chrome n'a pas pu être lancé sur le serveur. (${err.message})`);
       }
     }
