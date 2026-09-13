@@ -1010,6 +1010,7 @@ footer {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
+  flex-direction: row;
   gap: 0px;
   background: #0f172a;
   color: #ffffff;
@@ -1017,12 +1018,19 @@ footer {
   border-radius: 16px;
   border: 1.5px solid #1e293b;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
-  transition: max-width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), padding 0.3s ease, background 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease;
+  transition: max-width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+              gap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              padding 0.35s ease,
+              background 0.3s ease,
+              transform 0.25s ease,
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
   cursor: pointer;
   overflow: hidden;
   max-width: 44px; /* Default: only icon visible */
   height: 44px;
   box-sizing: border-box;
+  position: relative;
 }
 
 .qr-app-icon {
@@ -1036,7 +1044,8 @@ footer {
   justify-content: center;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(202, 255, 0, 0.35);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease;
 }
 .qr-app-icon svg {
   width: 18px;
@@ -1050,15 +1059,19 @@ footer {
   white-space: nowrap;
   color: #ffffff;
   opacity: 0;
-  transform: translateX(12px);
-  transition: opacity 0.25s ease 0.05s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s;
+  max-width: 0;
+  overflow: hidden;
+  transform: translateX(-8px) scale(0.85);
+  transition: opacity 0.3s ease 0.08s,
+              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s,
+              max-width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: none;
 }
 
 /* HOVER EXPANDED STATE */
 .qr-expand-btn:hover {
-  max-width: 145px;
-  padding-right: 14px;
+  max-width: 160px;
+  padding: 4px 16px 4px 4px;
   gap: 10px;
   background: #000000;
   border-color: var(--brand-green);
@@ -1067,10 +1080,12 @@ footer {
 }
 .qr-expand-btn:hover .qr-app-label {
   opacity: 1;
-  transform: translateX(0);
+  max-width: 80px;
+  transform: translateX(0) scale(1);
 }
 .qr-expand-btn:hover .qr-app-icon {
-  transform: scale(1.05);
+  transform: translateX(-2px) scale(1.08);
+  box-shadow: 0 4px 14px rgba(202, 255, 0, 0.5);
 }
 
 .qr-box {
