@@ -1009,7 +1009,7 @@ footer {
 .qr-expand-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   flex-direction: row;
   gap: 0px;
   background: #0f172a;
@@ -1027,7 +1027,7 @@ footer {
               border-color 0.3s ease;
   cursor: pointer;
   overflow: hidden;
-  max-width: 44px; /* Default: only icon visible */
+  max-width: 44px;
   height: 44px;
   box-sizing: border-box;
   position: relative;
@@ -1061,7 +1061,7 @@ footer {
   opacity: 0;
   max-width: 0;
   overflow: hidden;
-  transform: translateX(-8px) scale(0.85);
+  transform: translateX(8px) scale(0.85);
   transition: opacity 0.3s ease 0.08s,
               transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s,
               max-width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1071,7 +1071,7 @@ footer {
 /* HOVER EXPANDED STATE */
 .qr-expand-btn:hover {
   max-width: 160px;
-  padding: 4px 16px 4px 4px;
+  padding: 4px 4px 4px 16px;
   gap: 10px;
   background: #000000;
   border-color: var(--brand-green);
@@ -1084,7 +1084,7 @@ footer {
   transform: translateX(0) scale(1);
 }
 .qr-expand-btn:hover .qr-app-icon {
-  transform: translateX(-2px) scale(1.08);
+  transform: translateX(2px) scale(1.08);
   box-shadow: 0 4px 14px rgba(202, 255, 0, 0.5);
 }
 
