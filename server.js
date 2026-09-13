@@ -146,18 +146,50 @@ async function getPuppeteerPage() {
       throw new Error("Puppeteer n'est pas encore prêt sur le serveur.");
     }
 
-    puppeteerBrowser = await puppeteer.default.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process'
-      ]
-    });
+    const launchArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process'
+    ];
+
+    try {
+      puppeteerBrowser = await puppeteer.default.launch({
+        headless: true,
+        args: launchArgs
+      });
+    } catch (err) {
+      console.warn('Standard Puppeteer launch failed, checking system Chrome binaries...', err.message);
+      const possiblePaths = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/usr/bin/google-chrome-stable'
+      ].filter(Boolean);
+
+      let launched = false;
+      for (const execPath of possiblePaths) {
+        if (fs.existsSync(execPath)) {
+          try {
+            puppeteerBrowser = await puppeteer.default.launch({
+              executablePath: execPath,
+              headless: true,
+              args: launchArgs
+            });
+            launched = true;
+            break;
+          } catch (e) {}
+        }
+      }
+
+      if (!launched) {
+        throw new Error(`Chrome n'a pas pu être lancé sur le serveur. (${err.message})`);
+      }
+    }
   }
 
   if (!puppeteerPage || puppeteerPage.isClosed()) {
