@@ -132,12 +132,12 @@
           <div class="htp-visual htp-visual-1">
             <div class="mockup-input">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              <span>Entrez le code (ex: 2g2eij)</span>
-              <div class="mockup-btn-paste">
+              <span id="step1CodeVal" class="mockup-val"></span>
+              <div class="mockup-btn-paste" id="step1PasteBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
               </div>
             </div>
-            <div class="mockup-btn-disabled">
+            <div class="mockup-btn-disabled" id="step1Btn">
               Payer maintenant &rarr;
             </div>
           </div>
@@ -152,11 +152,11 @@
           <h3 class="htp-card-title">Cliquez sur « Payer maintenant »</h3>
           <p class="htp-card-text">Une fois le code saisi, cliquez sur le bouton « Payer maintenant ».</p>
           <div class="htp-visual htp-visual-2">
-            <div class="mockup-btn-active">
+            <div class="mockup-btn-active" id="step2Btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              Payer maintenant &rarr;
+              <span>Payer maintenant &rarr;</span>
             </div>
-            <svg class="mockup-cursor" viewBox="0 0 24 24" fill="var(--gray-900)" stroke="white" stroke-width="2" width="32" height="32"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+            <svg class="mockup-cursor" id="step2Cursor" viewBox="0 0 24 24" fill="var(--gray-900)" stroke="white" stroke-width="2" width="28" height="28"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
           </div>
         </div>
         
@@ -169,20 +169,46 @@
           <h3 class="htp-card-title">Entrez vos coordonnées bancaires</h3>
           <p class="htp-card-text">Vous serez redirigé vers la page de ClicToPay pour saisir vos informations de carte bancaire en toute sécurité.</p>
           <div class="htp-visual htp-visual-3">
-            <div class="mockup-modal">
+            <div class="mockup-modal" id="step3Modal">
               <div class="mockup-modal-bar">
-                <span>ClicToPay</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  <span>ClicToPay</span>
+                </div>
+                <span style="font-size:8.5px;color:var(--gray-400);font-weight:600;">Sécurisé</span>
               </div>
-              <div class="mockup-modal-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> 1234 5678 9012 3456</div>
-              <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <div class="mockup-modal-input" style="flex:1;">MM/AA</div>
-                <div class="mockup-modal-input" style="flex:1;">CVV</div>
+              
+              <!-- Card Number -->
+              <div class="mockup-modal-input" id="step3CardNum">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                <span class="val"></span>
               </div>
-              <div class="mockup-modal-btn"></div>
+
+              <!-- Name -->
+              <div class="mockup-modal-input" id="step3CardName">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span class="val"></span>
+              </div>
+
+              <!-- Exp & CVV -->
+              <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <div class="mockup-modal-input" style="flex:1;" id="step3CardExp">
+                  <span class="val"></span>
+                </div>
+                <div class="mockup-modal-input" style="flex:1;" id="step3CardCvv">
+                  <span class="val"></span>
+                </div>
+              </div>
+
+              <!-- Pay Button -->
+              <div class="mockup-modal-btn" id="step3PayBtn">
+                <span>Payer maintenant</span>
+              </div>
             </div>
-            <div class="mockup-modal-bg"></div>
-            <div class="mockup-check">
+
+            <!-- Checkmark Overlay -->
+            <div class="mockup-modal-bg" id="step3Bg"></div>
+            <div class="mockup-check" id="step3Check">
               <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
           </div>

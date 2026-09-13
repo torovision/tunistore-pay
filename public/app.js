@@ -297,3 +297,114 @@ window.resetFlow = function() {
   // Re-animate
   gsap.fromTo('.card', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.5)" });
 };
+
+// --- MOCKUP TYPING ANIMATION LOOP ---
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function typeText(element, text, speed = 70) {
+  element.textContent = '';
+  const parent = element.parentElement;
+  if (parent) parent.classList.add('typing');
+  for (let i = 0; i < text.length; i++) {
+    element.textContent += text[i];
+    await delay(speed);
+  }
+  if (parent) parent.classList.remove('typing');
+}
+
+async function runMockupLoop() {
+  const step1Code = document.getElementById('step1CodeVal');
+  const step1Paste = document.getElementById('step1PasteBtn');
+  const step1Btn = document.getElementById('step1Btn');
+
+  const step2Cursor = document.getElementById('step2Cursor');
+  const step2Btn = document.getElementById('step2Btn');
+
+  const step3Num = document.querySelector('#step3CardNum .val');
+  const step3Name = document.querySelector('#step3CardName .val');
+  const step3Exp = document.querySelector('#step3CardExp .val');
+  const step3Cvv = document.querySelector('#step3CardCvv .val');
+  const step3PayBtn = document.getElementById('step3PayBtn');
+  const step3Bg = document.getElementById('step3Bg');
+  const step3Check = document.getElementById('step3Check');
+
+  while (true) {
+    // Reset all mockup states
+    if (step1Code) step1Code.textContent = '';
+    if (step1Btn) {
+      step1Btn.style.background = 'var(--gray-100)';
+      step1Btn.style.color = 'var(--gray-400)';
+    }
+
+    if (step3Num) step3Num.textContent = '';
+    if (step3Name) step3Name.textContent = '';
+    if (step3Exp) step3Exp.textContent = '';
+    if (step3Cvv) step3Cvv.textContent = '';
+    if (step3PayBtn) step3PayBtn.classList.remove('clicked');
+    if (step3Bg) step3Bg.classList.remove('active');
+    if (step3Check) step3Check.classList.remove('active');
+
+    await delay(600);
+
+    // STEP 1: Type Code
+    if (step1Code) {
+      await typeText(step1Code, '2g2ejj', 90);
+      await delay(250);
+      if (step1Paste) gsap.fromTo(step1Paste, { scale: 1.25 }, { scale: 1, duration: 0.25 });
+      if (step1Btn) {
+        step1Btn.style.background = 'var(--brand-green)';
+        step1Btn.style.color = 'var(--brand-ink)';
+      }
+    }
+
+    await delay(500);
+
+    // STEP 2: Cursor Click
+    if (step2Cursor && step2Btn) {
+      gsap.fromTo(step2Cursor, { x: 15, y: 15 }, { x: 0, y: 0, duration: 0.5, ease: "power2.out" });
+      await delay(500);
+      gsap.fromTo(step2Btn, { scale: 0.94 }, { scale: 1, duration: 0.25 });
+    }
+
+    await delay(500);
+
+    // STEP 3: Type Card Number, Name "Flen Ben Foulen", Exp, CVV & Click Pay
+    if (step3Num) {
+      await typeText(step3Num, '1234 5678 9012 3456', 45);
+      await delay(150);
+    }
+    if (step3Name) {
+      await typeText(step3Name, 'Flen Ben Foulen', 55);
+      await delay(150);
+    }
+    if (step3Exp) {
+      await typeText(step3Exp, '12/28', 60);
+      await delay(100);
+    }
+    if (step3Cvv) {
+      await typeText(step3Cvv, '789', 60);
+      await delay(250);
+    }
+
+    // Click Pay Button
+    if (step3PayBtn) {
+      step3PayBtn.classList.add('clicked');
+      await delay(250);
+      step3PayBtn.classList.remove('clicked');
+    }
+
+    // Show Success Checkmark Popup
+    if (step3Bg) step3Bg.classList.add('active');
+    if (step3Check) step3Check.classList.add('active');
+
+    // Pause on success state
+    await delay(3500);
+  }
+}
+
+// Start loop after page ready
+document.addEventListener('DOMContentLoaded', () => {
+  runMockupLoop();
+});

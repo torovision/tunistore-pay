@@ -533,19 +533,55 @@ footer {
   align-items: center;
   gap: 4px;
   font-weight: 500;
+  height: 22px;
+  overflow: hidden;
 }
+.mockup-modal-input .val {
+  color: var(--brand-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mockup-modal-input.typing::after,
+.mockup-input.typing::after {
+  content: '|';
+  color: #10b981;
+  font-weight: 700;
+  animation: blink 0.6s infinite;
+  margin-left: 1px;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
 .mockup-modal-btn {
   background: #10b981;
-  height: 12px;
+  color: #ffffff;
+  height: 20px;
   border-radius: 4px;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  transition: transform 0.15s, background 0.15s;
 }
+.mockup-modal-btn.clicked {
+  transform: scale(0.94);
+  background: #059669;
+}
+
 .mockup-modal-bg {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(1px);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
+.mockup-modal-bg.active {
+  opacity: 1;
+}
+
 .mockup-check {
   position: absolute;
   width: 38px;
@@ -556,11 +592,14 @@ footer {
   align-items: center;
   justify-content: center;
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
-  animation: popCheck 1.5s infinite ease-in-out alternate;
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  z-index: 5;
 }
-@keyframes popCheck {
-  from { transform: scale(0.95); }
-  to { transform: scale(1.05); }
+.mockup-check.active {
+  transform: scale(1);
+  opacity: 1;
 }
 
 /* LANGUAGES BOX */
