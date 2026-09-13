@@ -1024,40 +1024,113 @@ footer {
   margin-top: 10px;
 }
 
-/* STATS SECTION */
+/* STATS SECTION WITH STEPS */
 .stats-section {
   width: 100%;
 }
+.stats-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 4px 14px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.stats-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--brand-ink);
+  margin-top: 6px;
+  letter-spacing: -0.02em;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
 }
+
 .stat-card {
+  position: relative;
   background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: 20px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 22px;
   padding: 20px 16px;
-  text-align: center;
+  text-align: left;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
 }
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
-  border-color: rgba(16, 185, 129, 0.3);
+
+.stat-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
 }
+
+.stat-step-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--brand-ink);
+  background: var(--brand-green);
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 3px 10px rgba(202, 255, 0, 0.35);
+  transition: all 0.3s ease;
+}
+
 .stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   background: rgba(16, 185, 129, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
+  margin: 0;
+  transition: transform 0.3s ease;
 }
-.stat-icon svg { width: 22px; height: 22px; }
+.stat-icon svg { width: 20px; height: 20px; }
+
+.stat-icon.icon-clock svg {
+  animation: clockSpin 12s linear infinite;
+}
+
+@keyframes clockSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.stat-card.step-highlight {
+  border-color: #10b981;
+  background: var(--white);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.2), 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.stat-card.step-highlight .stat-step-badge {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.08);
+  border-color: var(--brand-green);
+}
 .stat-value {
   font-size: 22px;
   font-weight: 800;

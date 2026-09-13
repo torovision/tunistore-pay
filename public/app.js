@@ -49,7 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
     .fromTo('.secure-tag', { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(2)" }, "-=0.4")
     .to('.gsap-card', { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.7)" }, "-=0.4")
     .fromTo('.hero-badge', { scale: 0.7, opacity: 0, y: -10 }, { scale: 1, opacity: 1, y: 0, duration: 0.55, ease: "back.out(2)" }, "-=0.6")
+    .fromTo('.gsap-stat-card', { opacity: 0, y: 30, scale: 0.85 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.12, ease: "back.out(1.8)" }, "-=0.4")
     .fromTo('.gsap-content', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power2.out" }, "-=0.4");
+
+  // Step Spotlight Auto Loop
+  let currentStepSpotlight = 0;
+  const statCards = document.querySelectorAll('.gsap-stat-card');
+  if (statCards.length > 0) {
+    setInterval(() => {
+      statCards.forEach(card => card.classList.remove('step-highlight'));
+      if (statCards[currentStepSpotlight]) {
+        statCards[currentStepSpotlight].classList.add('step-highlight');
+      }
+      currentStepSpotlight = (currentStepSpotlight + 1) % statCards.length;
+    }, 2200);
+  }
 
   // Check URL parameter for direct link
   const params = new URLSearchParams(window.location.search);
