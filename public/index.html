@@ -104,8 +104,11 @@
       <div class="result-icon" id="resultIcon"></div>
       <h2 class="result-title" id="resultTitle"></h2>
       <p class="result-desc" id="resultDesc"></p>
+      <div class="result-amount-badge hidden" id="resultAmountBadge">
+        <span id="resultAmountVal">0 DT</span>
+      </div>
       <button class="btn-primary result-btn" id="resultBtn" onclick="resetFlow()">
-        <span class="btn-text">Nouveau paiement</span>
+        <span class="btn-text" id="resultBtnText">Nouveau paiement</span>
         <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
     </div>

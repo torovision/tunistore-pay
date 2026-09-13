@@ -259,6 +259,86 @@ function openPayModal(url) {
   }
 }
 
+function checkIframeRedirect() {
+  try {
+    let currentUrl = '';
+    try {
+      if (payIframe.contentWindow && payIframe.contentWindow.location) {
+        currentUrl = payIframe.contentWindow.location.href;
+      }
+    } catch(e) {
+      currentUrl = payIframe.src || '';
+    }
+
+    if (!currentUrl || currentUrl === 'about:blank') return false;
+
+    const lower = currentUrl.toLowerCase();
+    
+    // Failure redirect check (e.g. https://app.kashy.tn/fr/payment/failure)
+    if (
+      lower.includes('app.kashy.tn/fr/payment/failure') ||
+      lower.includes('/payment/failure') ||
+      lower.includes('/payment/failed') ||
+      lower.includes('payment/failure') ||
+      lower.includes('status=failure') ||
+      lower.includes('status=failed') ||
+      lower.includes('result=failure') ||
+      lower.includes('error=true')
+    ) {
+      console.log('[ClicToPay Redirect] Detected Payment Failure:', currentUrl);
+      closePayModalSilently();
+      showResult('fail');
+      return true;
+    }
+
+    // Success redirect check (e.g. https://app.kashy.tn/fr/payment/success)
+    if (
+      lower.includes('app.kashy.tn/fr/payment/success') ||
+      lower.includes('/payment/success') ||
+      lower.includes('/payment/completed') ||
+      lower.includes('payment/success') ||
+      lower.includes('status=success') ||
+      lower.includes('status=paid')
+    ) {
+      console.log('[ClicToPay Redirect] Detected Payment Success:', currentUrl);
+      closePayModalSilently();
+      showResult('success');
+      return true;
+    }
+  } catch(e) {
+    console.error('[Iframe Check Error]', e);
+  }
+
+  return false;
+}
+
+// Window Message Listener for PostMessage events from ClicToPay / Kashy iframe
+window.addEventListener('message', (event) => {
+  try {
+    const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    if (!data) return;
+
+    if (
+      data.status === 'failure' ||
+      data.status === 'FAILED' ||
+      data.event === 'payment_failed' ||
+      (data.url && (data.url.toLowerCase().includes('payment/failure') || data.url.toLowerCase().includes('failure')))
+    ) {
+      closePayModalSilently();
+      showResult('fail');
+    } else if (
+      data.status === 'success' ||
+      data.status === 'PAID' ||
+      data.status === 'COMPLETED' ||
+      data.event === 'payment_success' ||
+      (data.url && (data.url.toLowerCase().includes('payment/success') || data.url.toLowerCase().includes('success')))
+    ) {
+      closePayModalSilently();
+      showResult('success');
+    }
+  } catch(e) {}
+});
+
 payIframe.addEventListener('load', () => {
   if (!payIframe.src || payIframe.src === 'about:blank' || payIframe.src === window.location.href) return;
   const modalLoading = document.getElementById('modalLoading');
@@ -266,11 +346,12 @@ payIframe.addEventListener('load', () => {
   if (!iframeInitialLoaded) {
     iframeInitialLoaded = true;
     if (modalLoading) modalLoading.style.display = 'none';
-  } else {
-    // If iframe navigates to next page (e.g. 3DS OTP step), check status but DO NOT close modal if still pending
-    if (currentShortId) {
-      checkStatusNow(currentShortId);
-    }
+  }
+
+  // Check if iframe redirected to failure/success URL
+  const handled = checkIframeRedirect();
+  if (!handled && currentShortId) {
+    checkStatusNow(currentShortId);
   }
 });
 
@@ -386,6 +467,7 @@ function startStatusPolling(shortId) {
 
 // --- RESULT SCREEN ---
 function showResult(type, amountDT) {
+  if (pollTimer) clearInterval(pollTimer);
   spinnerAnim.stop();
   btnLoader.classList.add('hidden');
 
@@ -395,23 +477,127 @@ function showResult(type, amountDT) {
 
   // Show result screen
   resultScreen.classList.remove('hidden');
-  gsap.fromTo(resultScreen, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.5)" });
 
-  if (type === 'success') {
-    resultIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>`;
-    resultIcon.className = 'result-icon result-success';
-    resultTitle.textContent = 'Paiement réussi !';
-    resultDesc.textContent = amountDT ? `${amountDT} DT ont été payés avec succès.` : 'Votre paiement a été traité avec succès.';
-  } else if (type === 'fail') {
-    resultIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>`;
+  const resultTitle = document.getElementById('resultTitle');
+  const resultDesc = document.getElementById('resultDesc');
+  const resultIcon = document.getElementById('resultIcon');
+  const resultBtn = document.getElementById('resultBtn');
+  const resultBtnText = document.getElementById('resultBtnText');
+  const resultAmountBadge = document.getElementById('resultAmountBadge');
+  const resultAmountVal = document.getElementById('resultAmountVal');
+
+  gsap.killTweensOf([resultScreen, resultIcon, resultTitle, resultDesc, resultBtn]);
+
+  if (type === 'fail' || type === 'failure' || type === 'FAILED') {
+    // --- PAYMENT FAILED ---
     resultIcon.className = 'result-icon result-fail';
+    resultIcon.innerHTML = `
+      <div class="icon-pulse-bg red"></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M15 9l-6 6M9 9l6 6"/>
+      </svg>
+    `;
+    
     resultTitle.textContent = 'Paiement échoué';
-    resultDesc.textContent = 'Le paiement n\'a pas abouti. Veuillez réessayer.';
+    resultTitle.className = 'result-title text-fail';
+    resultDesc.textContent = 'La transaction a été annulée ou n\'a pas pu être traitée via ClicToPay. Aucun montant n\'a été débité.';
+
+    if (resultAmountBadge) resultAmountBadge.classList.add('hidden');
+
+    if (resultBtnText) resultBtnText.textContent = 'Réessayer le paiement';
+    if (resultBtn) {
+      resultBtn.className = 'btn-primary result-btn btn-retry';
+      resultBtn.onclick = () => window.resetFlow();
+    }
+
+    // GSAP Entry & Horizontal Shake Animation for Failure
+    gsap.fromTo(resultScreen, 
+      { opacity: 0, scale: 0.88, y: 25 }, 
+      { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: "power3.out" }
+    );
+
+    gsap.fromTo(resultIcon,
+      { scale: 0.3, rotation: -30 },
+      { scale: 1, rotation: 0, duration: 0.55, ease: "back.out(2)" }
+    );
+
+    // Shake icon to emphasize payment failure
+    gsap.to(resultIcon, {
+      x: -10,
+      duration: 0.07,
+      repeat: 5,
+      yoyo: true,
+      ease: "sine.inOut",
+      delay: 0.3,
+      onComplete: () => gsap.set(resultIcon, { x: 0 })
+    });
+
+  } else if (type === 'success' || type === 'PAID' || type === 'COMPLETED') {
+    // --- PAYMENT SUCCESSFUL ---
+    resultIcon.className = 'result-icon result-success';
+    resultIcon.innerHTML = `
+      <div class="icon-pulse-bg green"></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+    `;
+
+    resultTitle.textContent = 'Paiement réussi !';
+    resultTitle.className = 'result-title text-success';
+    resultDesc.textContent = amountDT ? `${amountDT} DT ont été payés avec succès via ClicToPay.` : 'Votre paiement a été validé et traité avec succès.';
+
+    if (resultAmountBadge && amountDT) {
+      if (resultAmountVal) resultAmountVal.textContent = `${amountDT} DT`;
+      resultAmountBadge.classList.remove('hidden');
+    } else if (resultAmountBadge) {
+      resultAmountBadge.classList.add('hidden');
+    }
+
+    if (resultBtnText) resultBtnText.textContent = 'Nouveau paiement';
+    if (resultBtn) {
+      resultBtn.className = 'btn-primary result-btn btn-success-action';
+      resultBtn.onclick = () => window.resetFlow();
+    }
+
+    // GSAP Celebratory Spring Pop Animation for Success
+    gsap.fromTo(resultScreen, 
+      { opacity: 0, scale: 0.85, y: 30 }, 
+      { opacity: 1, scale: 1, y: 0, duration: 0.55, ease: "back.out(1.7)" }
+    );
+
+    gsap.fromTo(resultIcon,
+      { scale: 0, rotation: -60 },
+      { scale: 1.15, rotation: 0, duration: 0.65, ease: "back.out(2.5)", onComplete: () => {
+        gsap.to(resultIcon, { scale: 1, duration: 0.2, ease: "power1.out" });
+      }}
+    );
+
+    if (resultAmountBadge && amountDT) {
+      gsap.fromTo(resultAmountBadge,
+        { opacity: 0, scale: 0.7, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.4, delay: 0.35, ease: "back.out(1.8)" }
+      );
+    }
   } else {
-    resultIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>`;
+    // --- PENDING STATE ---
     resultIcon.className = 'result-icon result-pending';
+    resultIcon.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 8v4M12 16h.01"/>
+      </svg>
+    `;
     resultTitle.textContent = 'Paiement en cours';
-    resultDesc.textContent = 'Votre paiement est en cours de traitement. Vérifiez votre relevé bancaire.';
+    resultTitle.className = 'result-title';
+    resultDesc.textContent = 'Votre paiement est en cours de traitement. Veuillez vérifier votre compte.';
+
+    if (resultAmountBadge) resultAmountBadge.classList.add('hidden');
+    if (resultBtnText) resultBtnText.textContent = 'Retour au paiement';
+    if (resultBtn) resultBtn.onclick = () => window.resetFlow();
+
+    gsap.fromTo(resultScreen, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power2.out" });
   }
 }
 
