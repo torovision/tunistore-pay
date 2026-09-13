@@ -415,7 +415,10 @@
         if (data.active && data.remainingMinutes > 0) {
           dot.className = 'status-dot';
           title.textContent = 'Session Kashy Active & Synchronisée';
-          sublabel.textContent = `Expire à ${new Date(data.expiresAt).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+          const expStr = new Date(data.expiresAt).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+          sublabel.textContent = data.autoRefreshActive
+            ? `Expire à ${expStr} • 🔄 Maintien de session automatique actif`
+            : `Expire à ${expStr}`;
           time.textContent = `${data.remainingMinutes} min restante`;
           time.className = 'session-badge';
         } else {

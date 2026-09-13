@@ -147,27 +147,64 @@ app.post('/api/update-token', (req, res) => {
 // --- PUPPETEER AUTOMATED KASHY SESSION MANAGER ---
 let puppeteerBrowser = null;
 let puppeteerPage = null;
+let autoRefreshTimer = null;
 let puppeteerState = {
   status: 'idle',
   message: 'Aucun navigateur actif.',
   phone: null,
-  lastUpdated: null
+  lastUpdated: null,
+  lastRefresh: null
 };
 
-function findProjectChromeExecutable() {
+/**
+ * Recursively scan a directory for a chrome/chromium executable
+ */
+function findChromeInDir(dir) {
   try {
-    const cacheDir = join(__dirname, '.cache', 'puppeteer', 'chrome');
-    if (fs.existsSync(cacheDir)) {
-      const dirs = fs.readdirSync(cacheDir);
-      for (const d of dirs) {
-        const winPath = join(cacheDir, d, 'chrome-win64', 'chrome.exe');
-        const linuxPath = join(cacheDir, d, 'chrome-linux64', 'chrome');
-        if (process.platform === 'win32' && fs.existsSync(winPath)) return winPath;
-        if (fs.existsSync(linuxPath)) return linuxPath;
-        if (fs.existsSync(winPath)) return winPath;
-      }
+    if (!fs.existsSync(dir)) return null;
+    const stat = fs.statSync(dir);
+    // If it's a file and named chrome/chromium, return it
+    if (!stat.isDirectory()) {
+      const base = dir.split('/').pop().split('\\').pop();
+      if (base === 'chrome' || base === 'chrome.exe' || base === 'chromium') return dir;
+      return null;
+    }
+    const entries = fs.readdirSync(dir);
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      try {
+        const entryStat = fs.statSync(fullPath);
+        if (!entryStat.isDirectory()) {
+          if (entry === 'chrome' || entry === 'chrome.exe' || entry === 'chromium') return fullPath;
+        } else {
+          // Recurse into subdirectories (max 4 levels deep to avoid infinite scan)
+          if (fullPath.split('/').length < dir.split('/').length + 5) {
+            const found = findChromeInDir(fullPath);
+            if (found) return found;
+          }
+        }
+      } catch(e) {}
     }
   } catch(e) {}
+  return null;
+}
+
+function findProjectChromeExecutable() {
+  // 1. Project-local cache
+  const projectCache = join(__dirname, '.cache', 'puppeteer');
+  const projectChrome = findChromeInDir(projectCache);
+  if (projectChrome) return projectChrome;
+
+  // 2. Render default cache location
+  const renderCache = '/opt/render/.cache/puppeteer';
+  const renderChrome = findChromeInDir(renderCache);
+  if (renderChrome) return renderChrome;
+
+  // 3. Home directory cache
+  const homeCache = join(process.env.HOME || '/root', '.cache', 'puppeteer');
+  const homeChrome = findChromeInDir(homeCache);
+  if (homeChrome) return homeChrome;
+
   return null;
 }
 
@@ -177,7 +214,7 @@ async function getPuppeteerPage() {
     try {
       puppeteer = await import('puppeteer');
     } catch (e) {
-      throw new Error("Puppeteer n'est pas encore prêt sur le serveur.");
+      throw new Error("Puppeteer n'est pas installé sur le serveur.");
     }
 
     const launchArgs = [
@@ -187,43 +224,53 @@ async function getPuppeteerPage() {
       '--disable-gpu',
       '--no-first-run',
       '--no-zygote',
-      '--single-process'
+      '--single-process',
+      '--disable-extensions'
     ];
 
+    // Try project-detected chrome first
     const projectChromePath = findProjectChromeExecutable();
+    console.log('[Puppeteer] Detected Chrome path:', projectChromePath || 'none (will use default)');
+
     const possiblePaths = [
       projectChromePath,
       process.env.PUPPETEER_EXECUTABLE_PATH,
-      '/opt/render/.cache/puppeteer',
+      '/usr/bin/google-chrome-stable',
       '/usr/bin/google-chrome',
       '/usr/bin/chromium-browser',
-      '/usr/bin/chromium',
-      '/usr/bin/google-chrome-stable'
+      '/usr/bin/chromium'
     ].filter(Boolean);
 
     let launched = false;
     for (const execPath of possiblePaths) {
       if (fs.existsSync(execPath)) {
         try {
+          console.log(`[Puppeteer] Trying Chrome at: ${execPath}`);
           puppeteerBrowser = await puppeteer.default.launch({
             executablePath: execPath,
-            headless: true,
+            headless: 'new',
             args: launchArgs
           });
+          console.log(`[Puppeteer] Chrome launched successfully from: ${execPath}`);
           launched = true;
           break;
-        } catch (e) {}
+        } catch (e) {
+          console.error(`[Puppeteer] Failed to launch from ${execPath}:`, e.message);
+        }
       }
     }
 
     if (!launched) {
       try {
+        // Let Puppeteer find its own bundled Chrome
+        console.log('[Puppeteer] Trying default bundled Chrome...');
         puppeteerBrowser = await puppeteer.default.launch({
-          headless: true,
+          headless: 'new',
           args: launchArgs
         });
+        console.log('[Puppeteer] Default Chrome launched successfully.');
       } catch (err) {
-        throw new Error(`Chrome n'a pas pu être lancé sur le serveur. (${err.message})`);
+        throw new Error(`Chrome introuvable sur le serveur. Assurez-vous que "npx puppeteer browsers install chrome" a été exécuté. (${err.message})`);
       }
     }
   }
@@ -231,53 +278,227 @@ async function getPuppeteerPage() {
   if (!puppeteerPage || puppeteerPage.isClosed()) {
     puppeteerPage = await puppeteerBrowser.newPage();
     await puppeteerPage.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
     );
+    // Block images/css/fonts to save bandwidth on Render
+    await puppeteerPage.setRequestInterception(true);
+    puppeteerPage.on('request', (req) => {
+      const type = req.resourceType();
+      if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
   }
 
   return puppeteerPage;
 }
 
-// Request SMS OTP via Puppeteer / Kashy Auth
+/**
+ * Start auto-refresh loop: re-authenticates with Kashy API every 25 min
+ * so the 30-min JWT never expires while the server is running.
+ */
+function startAutoRefreshLoop(phone) {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+
+  autoRefreshTimer = setInterval(async () => {
+    console.log('[Auto-Refresh] Attempting Kashy token refresh...');
+
+    // Strategy 1: If Puppeteer page is open with a valid session, extract fresh token
+    try {
+      if (puppeteerPage && !puppeteerPage.isClosed()) {
+        await puppeteerPage.reload({ waitUntil: 'networkidle2', timeout: 15000 });
+        const freshToken = await puppeteerPage.evaluate(() => {
+          return localStorage.getItem('token') ||
+                 localStorage.getItem('auth_token') ||
+                 localStorage.getItem('access_token') ||
+                 sessionStorage.getItem('token');
+        });
+        if (freshToken && freshToken.length > 50) {
+          const formatted = freshToken.trim().startsWith('Bearer ') ? freshToken.trim() : `Bearer ${freshToken.trim()}`;
+          activeToken = formatted;
+          process.env.KASHY_AUTH_TOKEN = formatted;
+          const expMs = getTokenExpiry(formatted);
+          const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+          puppeteerState.status = 'connected';
+          puppeteerState.message = `Session auto-rafraîchie (~${remainingMinutes || '?'} min)`;
+          puppeteerState.lastRefresh = Date.now();
+          puppeteerState.lastUpdated = Date.now();
+          console.log(`[Auto-Refresh] Token refreshed via Puppeteer. ~${remainingMinutes} min remaining.`);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('[Auto-Refresh] Puppeteer refresh failed:', e.message);
+    }
+
+    // Strategy 2: Try Kashy API refresh endpoint
+    try {
+      const currentRaw = activeToken.replace('Bearer ', '').trim();
+      const refreshRes = await fetch('https://api.kashy.tn/api/v1/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentRaw}`
+        }
+      });
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        const rawToken = data.token || data.accessToken || data.bearer;
+        if (rawToken) {
+          const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
+          activeToken = formatted;
+          process.env.KASHY_AUTH_TOKEN = formatted;
+          const expMs = getTokenExpiry(formatted);
+          const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+          puppeteerState.status = 'connected';
+          puppeteerState.message = `Session auto-rafraîchie via API (~${remainingMinutes || '?'} min)`;
+          puppeteerState.lastRefresh = Date.now();
+          puppeteerState.lastUpdated = Date.now();
+          console.log(`[Auto-Refresh] Token refreshed via API. ~${remainingMinutes} min remaining.`);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('[Auto-Refresh] API refresh failed:', e.message);
+    }
+
+    // If both strategies failed, mark as expired
+    const expMs = getTokenExpiry(activeToken);
+    if (expMs && Date.now() >= expMs) {
+      puppeteerState.status = 'expired';
+      puppeteerState.message = 'Session expirée. Reconnectez-vous via SMS OTP.';
+      puppeteerState.lastUpdated = Date.now();
+      console.log('[Auto-Refresh] Token expired. Manual re-login required.');
+    }
+  }, 25 * 60 * 1000); // Every 25 minutes
+}
+
+// Request SMS OTP via Kashy API (primary) or Puppeteer (fallback)
 app.post('/api/admin/kashy-initiate-login', async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: 'Numéro de téléphone requis.' });
 
   const cleanPhone = phone.replace(/\s+/g, '');
-  puppeteerState = { status: 'loading', message: 'Lancement de la connexion...', phone: cleanPhone, lastUpdated: Date.now() };
+  puppeteerState = { status: 'loading', message: 'Envoi du SMS...', phone: cleanPhone, lastUpdated: Date.now() };
 
-  // First try direct API call to Kashy auth service
+  // Try direct API call to Kashy auth service
   try {
+    console.log(`[Login] Initiating login for ${cleanPhone} via API...`);
     const directRes = await fetch('https://api.kashy.tn/api/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phoneNumber: cleanPhone })
     });
-    if (directRes.ok) {
-      puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone}. Entrez le code OTP reçu.`, phone: cleanPhone, lastUpdated: Date.now() };
-      return res.json({ success: true, message: puppeteerState.message });
-    }
-  } catch (e) {}
+    const responseData = await directRes.json().catch(() => ({}));
+    console.log(`[Login] API response status: ${directRes.status}`, JSON.stringify(responseData).slice(0, 200));
 
-  // Fallback to Puppeteer headless browser
+    if (directRes.ok || directRes.status === 200 || directRes.status === 201) {
+      puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone}. Entrez le code OTP reçu.`, phone: cleanPhone, lastUpdated: Date.now() };
+      return res.json({ success: true, message: puppeteerState.message, method: 'api' });
+    }
+  } catch (e) {
+    console.error('[Login] Direct API call failed:', e.message);
+  }
+
+  // Fallback: Puppeteer headless browser
   try {
+    console.log(`[Login] Falling back to Puppeteer for ${cleanPhone}...`);
     const page = await getPuppeteerPage();
     await page.goto('https://app.kashy.tn/login', { waitUntil: 'networkidle2', timeout: 30000 });
 
-    const phoneInput = await page.waitForSelector('input[type="tel"], input[name="phone"], input[placeholder*="53"], input', { timeout: 10000 });
-    if (phoneInput) {
-      await phoneInput.click({ clickCount: 3 });
-      await phoneInput.type(cleanPhone.replace('+216', ''));
+    // Wait a moment for JS to render
+    await new Promise(r => setTimeout(r, 2000));
 
-      const submitBtn = await page.$('button[type="submit"], button');
-      if (submitBtn) await submitBtn.click();
+    // Try multiple selector strategies
+    let phoneInput = null;
+    const selectors = [
+      'input[type="tel"]',
+      'input[name="phone"]',
+      'input[name="phoneNumber"]',
+      'input[placeholder*="téléphone"]',
+      'input[placeholder*="phone"]',
+      'input[placeholder*="53"]',
+      'input[placeholder*="numéro"]',
+      'input[inputmode="numeric"]',
+      'input[inputmode="tel"]'
+    ];
+
+    for (const sel of selectors) {
+      try {
+        phoneInput = await page.$(sel);
+        if (phoneInput) {
+          console.log(`[Login] Found phone input with selector: ${sel}`);
+          break;
+        }
+      } catch(e) {}
     }
 
-    puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone}. Entrez le code OTP reçu.`, phone: cleanPhone, lastUpdated: Date.now() };
-    res.json({ success: true, message: puppeteerState.message });
+    // Last resort: find any visible input
+    if (!phoneInput) {
+      const allInputs = await page.$$('input');
+      for (const inp of allInputs) {
+        const isVisible = await inp.evaluate(el => {
+          const rect = el.getBoundingClientRect();
+          const style = window.getComputedStyle(el);
+          return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        if (isVisible) {
+          phoneInput = inp;
+          console.log('[Login] Using first visible input as phone input.');
+          break;
+        }
+      }
+    }
+
+    if (phoneInput) {
+      await phoneInput.click({ clickCount: 3 });
+      await phoneInput.press('Backspace');
+      const phoneDigits = cleanPhone.replace('+216', '').replace(/\D/g, '');
+      await phoneInput.type(phoneDigits, { delay: 50 });
+
+      // Find and click submit button
+      await new Promise(r => setTimeout(r, 500));
+      const buttons = await page.$$('button');
+      let clicked = false;
+      for (const btn of buttons) {
+        const text = await btn.evaluate(el => el.textContent.toLowerCase().trim());
+        const isVisible = await btn.evaluate(el => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        if (isVisible && (text.includes('connexion') || text.includes('login') || text.includes('envoyer') || text.includes('continuer') || text.includes('submit') || text.includes('suivant'))) {
+          await btn.click();
+          clicked = true;
+          console.log(`[Login] Clicked button: "${text}"`);
+          break;
+        }
+      }
+      if (!clicked) {
+        // Click first visible button as fallback
+        for (const btn of buttons) {
+          const isVisible = await btn.evaluate(el => {
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          });
+          if (isVisible) {
+            await btn.click();
+            console.log('[Login] Clicked first visible button.');
+            break;
+          }
+        }
+      }
+    }
+
+    // Wait for navigation/response
+    await new Promise(r => setTimeout(r, 3000));
+
+    puppeteerState = { status: 'waiting_otp', message: `SMS envoyé au ${cleanPhone} (via navigateur). Entrez le code OTP.`, phone: cleanPhone, lastUpdated: Date.now() };
+    res.json({ success: true, message: puppeteerState.message, method: 'puppeteer' });
   } catch (err) {
-    console.error('Puppeteer initiate error:', err);
-    puppeteerState = { status: 'error', message: 'Erreur: ' + err.message, phone: cleanPhone, lastUpdated: Date.now() };
+    console.error('[Login] Puppeteer error:', err);
+    puppeteerState = { status: 'error', message: err.message, phone: cleanPhone, lastUpdated: Date.now() };
     res.status(500).json({ error: err.message });
   }
 });
@@ -290,50 +511,146 @@ app.post('/api/admin/kashy-submit-otp', async (req, res) => {
   const cleanOtp = String(otpCode).trim();
   const phone = puppeteerState.phone || '+21653772707';
 
-  // Try Direct API login with OTP first
+  puppeteerState.status = 'verifying';
+  puppeteerState.message = 'Validation du code OTP...';
+  puppeteerState.lastUpdated = Date.now();
+
+  // Strategy 1: Direct API verify-otp
   try {
-    const directRes = await fetch('https://api.kashy.tn/api/v1/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phoneNumber: phone, code: cleanOtp })
-    });
+    console.log(`[OTP] Verifying code ${cleanOtp} for ${phone} via API...`);
 
-    if (directRes.ok) {
-      const data = await directRes.json();
-      const rawToken = data.token || data.accessToken || data.bearer;
-      if (rawToken) {
-        const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
-        activeToken = formatted;
-        process.env.KASHY_AUTH_TOKEN = formatted;
+    // Try multiple possible API endpoints & payload formats
+    const endpoints = [
+      { url: 'https://api.kashy.tn/api/v1/auth/verify-otp', body: { phoneNumber: phone, code: cleanOtp } },
+      { url: 'https://api.kashy.tn/api/v1/auth/verify-otp', body: { phoneNumber: phone, otp: cleanOtp } },
+      { url: 'https://api.kashy.tn/api/v1/auth/verify', body: { phoneNumber: phone, code: cleanOtp } },
+      { url: 'https://api.kashy.tn/api/v1/auth/verify', body: { phoneNumber: phone, verificationCode: cleanOtp } },
+    ];
 
-        const expMs = getTokenExpiry(formatted);
-        const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+    for (const { url, body } of endpoints) {
+      try {
+        const directRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await directRes.json().catch(() => ({}));
+        console.log(`[OTP] ${url} status: ${directRes.status}`, JSON.stringify(data).slice(0, 300));
 
-        puppeteerState = { status: 'connected', message: `Connecté à Kashy ! (~${remainingMinutes || '?'} min)`, phone, lastUpdated: Date.now() };
-        return res.json({ success: true, remainingMinutes });
+        if (directRes.ok) {
+          const rawToken = data.token || data.accessToken || data.bearer || data.access_token;
+          if (rawToken) {
+            const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
+            activeToken = formatted;
+            process.env.KASHY_AUTH_TOKEN = formatted;
+
+            const expMs = getTokenExpiry(formatted);
+            const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+            puppeteerState = {
+              status: 'connected',
+              message: `Connecté à Kashy ! (~${remainingMinutes || '?'} min)`,
+              phone,
+              lastUpdated: Date.now(),
+              lastRefresh: Date.now()
+            };
+
+            // Start auto-refresh loop
+            startAutoRefreshLoop(phone);
+
+            console.log(`[OTP] ✅ Login successful via API. Token valid for ~${remainingMinutes} min.`);
+            return res.json({ success: true, remainingMinutes, method: 'api' });
+          }
+        }
+      } catch(e) {}
+    }
+  } catch (e) {
+    console.error('[OTP] Direct API error:', e.message);
+  }
+
+  // Strategy 2: Puppeteer OTP Submission
+  try {
+    console.log('[OTP] Falling back to Puppeteer...');
+    const page = await getPuppeteerPage();
+
+    // Try to find OTP input
+    let otpInput = null;
+    const otpSelectors = [
+      'input[type="number"]',
+      'input[name="otp"]',
+      'input[name="code"]',
+      'input[name="verificationCode"]',
+      'input[placeholder*="code"]',
+      'input[placeholder*="OTP"]',
+      'input[placeholder*="vérification"]',
+      'input[inputmode="numeric"]'
+    ];
+
+    for (const sel of otpSelectors) {
+      try {
+        otpInput = await page.$(sel);
+        if (otpInput) {
+          console.log(`[OTP] Found OTP input with selector: ${sel}`);
+          break;
+        }
+      } catch(e) {}
+    }
+
+    // Fallback: find any visible input
+    if (!otpInput) {
+      const allInputs = await page.$$('input');
+      for (const inp of allInputs) {
+        const isVisible = await inp.evaluate(el => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        if (isVisible) {
+          otpInput = inp;
+          break;
+        }
       }
     }
-  } catch (e) {}
 
-  // Puppeteer OTP Submission Fallback
-  try {
-    const page = await getPuppeteerPage();
-    const otpInput = await page.$('input[type="number"], input[placeholder*="code"], input[placeholder*="OTP"], input');
     if (otpInput) {
       await otpInput.click({ clickCount: 3 });
-      await otpInput.type(cleanOtp);
+      await otpInput.press('Backspace');
+      await otpInput.type(cleanOtp, { delay: 30 });
 
-      const submitBtn = await page.$('button[type="submit"], button');
-      if (submitBtn) await submitBtn.click();
+      // Find and click verify button
+      await new Promise(r => setTimeout(r, 500));
+      const buttons = await page.$$('button');
+      for (const btn of buttons) {
+        const text = await btn.evaluate(el => el.textContent.toLowerCase().trim());
+        const isVisible = await btn.evaluate(el => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        if (isVisible && (text.includes('vérifier') || text.includes('valider') || text.includes('confirmer') || text.includes('verify') || text.includes('submit') || text.includes('connexion'))) {
+          await btn.click();
+          console.log(`[OTP] Clicked button: "${text}"`);
+          break;
+        }
+      }
     }
 
-    await new Promise(r => setTimeout(r, 3500));
+    // Wait for page to process and store token
+    await new Promise(r => setTimeout(r, 5000));
 
+    // Try to extract the token from localStorage/sessionStorage/cookies
     const extractedToken = await page.evaluate(() => {
-      return localStorage.getItem('token') || 
-             localStorage.getItem('auth_token') || 
-             localStorage.getItem('bearer') || 
-             sessionStorage.getItem('token');
+      // Check various storage keys
+      const keys = ['token', 'auth_token', 'bearer', 'access_token', 'accessToken', 'jwt', 'kashy_token'];
+      for (const key of keys) {
+        const val = localStorage.getItem(key) || sessionStorage.getItem(key);
+        if (val && val.length > 50) return val;
+      }
+      // Check for token in cookies
+      const cookies = document.cookie.split(';');
+      for (const c of cookies) {
+        const [k, v] = c.trim().split('=');
+        if (k && v && v.length > 50 && (k.includes('token') || k.includes('auth') || k.includes('jwt'))) return v;
+      }
+      return null;
     });
 
     if (extractedToken) {
@@ -344,36 +661,49 @@ app.post('/api/admin/kashy-submit-otp', async (req, res) => {
       const expMs = getTokenExpiry(formatted);
       const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
 
-      puppeteerState = { status: 'connected', message: `Connecté à Kashy via Puppeteer ! (~${remainingMinutes || '?'} min)`, phone, lastUpdated: Date.now() };
+      puppeteerState = {
+        status: 'connected',
+        message: `Connecté via navigateur ! (~${remainingMinutes || '?'} min)`,
+        phone,
+        lastUpdated: Date.now(),
+        lastRefresh: Date.now()
+      };
 
-      // Keep session alive every 10 min
-      setInterval(async () => {
-        try {
-          if (puppeteerPage && !puppeteerPage.isClosed()) {
-            await puppeteerPage.reload({ waitUntil: 'networkidle2' });
-            const freshToken = await puppeteerPage.evaluate(() => localStorage.getItem('token') || localStorage.getItem('auth_token'));
-            if (freshToken) {
-              const freshFormatted = freshToken.trim().startsWith('Bearer ') ? freshToken.trim() : `Bearer ${freshToken.trim()}`;
-              activeToken = freshFormatted;
-              console.log('[Puppeteer Keep-Alive] Jeton Kashy synchronisé avec succès.');
-            }
-          }
-        } catch(e) {}
-      }, 10 * 60 * 1000);
+      // Start auto-refresh loop
+      startAutoRefreshLoop(phone);
 
-      return res.json({ success: true, remainingMinutes });
+      console.log(`[OTP] ✅ Login successful via Puppeteer. Token valid for ~${remainingMinutes} min.`);
+      return res.json({ success: true, remainingMinutes, method: 'puppeteer' });
     } else {
-      return res.status(400).json({ error: 'Code OTP invalide ou jeton non généré.' });
+      puppeteerState = { status: 'error', message: 'Code OTP invalide ou session non générée.', phone, lastUpdated: Date.now() };
+      return res.status(400).json({ error: 'Code OTP invalide ou jeton non extrait du navigateur.' });
     }
   } catch (err) {
-    console.error('Puppeteer OTP submit error:', err);
+    console.error('[OTP] Puppeteer error:', err);
+    puppeteerState = { status: 'error', message: err.message, phone, lastUpdated: Date.now() };
     res.status(500).json({ error: err.message });
   }
 });
 
-// Check Puppeteer Status
+// Check Puppeteer / Session Status
 app.get('/api/admin/puppeteer-status', (req, res) => {
-  res.json(puppeteerState);
+  const expMs = getTokenExpiry(activeToken);
+  const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+  const isExpired = expMs ? Date.now() >= expMs : true;
+
+  // Auto-update puppeteerState if token expired
+  if (isExpired && puppeteerState.status === 'connected') {
+    puppeteerState.status = 'expired';
+    puppeteerState.message = 'Session expirée. Reconnectez-vous.';
+    puppeteerState.lastUpdated = Date.now();
+  }
+
+  res.json({
+    ...puppeteerState,
+    tokenActive: !isExpired,
+    remainingMinutes,
+    autoRefreshActive: !!autoRefreshTimer
+  });
 });
 
 // Get Token Status
@@ -386,6 +716,7 @@ app.get('/api/token-status', (req, res) => {
     active: !isExpired,
     remainingMinutes,
     expiresAt: expMs ? new Date(expMs).toISOString() : null,
+    autoRefreshActive: !!autoRefreshTimer,
     puppeteerState
   });
 });
