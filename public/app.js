@@ -431,36 +431,37 @@ payIframe.addEventListener('load', () => {
     return;
   }
 
-  // When iframe loads a SECOND time, ClicToPay has submitted and redirected to Kashy redirect URL
-  // (which browser blocks due to X-Frame-Options, showing "app.kashy.tn n'autorise pas la connexion")
-  console.log('[ClicToPay] Secondary iframe load detected (Post-payment redirect!). Auto-closing modal...');
+  // Ensure loading spinner is hidden on secondary loads (e.g. 3DS OTP page) so user can type OTP
+  if (modalLoading) modalLoading.style.display = 'none';
 
-  // Instantly hide iframe modal so user never sees "app.kashy.tn n'autorise pas la connexion"
-  closePayModalSilently();
-  showVerifying();
+  // Check if we can read the iframe URL
+  let currentUrl = '';
+  try {
+    if (payIframe.contentWindow && payIframe.contentWindow.location) {
+      currentUrl = payIframe.contentWindow.location.href || '';
+    }
+  } catch(e) {}
 
-  // Check status aggressively
+  const lowerUrl = currentUrl.toLowerCase();
+  const isExplicitRedirect = lowerUrl.includes('kashy.tn') || lowerUrl.includes('payment/success') || lowerUrl.includes('payment/failure') || lowerUrl.includes('payment/failed');
+
+  if (isExplicitRedirect) {
+    console.log('[ClicToPay] Post-payment redirect explicitly detected:', currentUrl);
+    closePayModalSilently();
+    showVerifying();
+  }
+
+  // Trigger background status check without closing modal prematurely
   if (currentShortId) {
-    const delays = [0, 200, 500, 1000, 1800, 2800, 4000, 6000];
-    delays.forEach(ms => {
-      setTimeout(async () => {
-        const done = await checkStatusNow(currentShortId);
-        if (done) console.log(`[ClicToPay] Payment resolved at ${ms}ms delay`);
-      }, ms);
-    });
+    checkStatusNow(currentShortId);
   }
 });
 
-// Listen for iframe errors (ERR_BLOCKED_BY_RESPONSE from app.kashy.tn)
+// Listen for iframe errors
 payIframe.addEventListener('error', () => {
-  console.log('[ClicToPay] Iframe error / blocked by response — auto-closing modal and checking status...');
-  closePayModalSilently();
-  showVerifying();
+  console.log('[ClicToPay] Iframe load error — checking payment status in background...');
   if (currentShortId) {
-    const delays = [0, 300, 800, 1500, 3000, 5000];
-    delays.forEach(ms => {
-      setTimeout(() => checkStatusNow(currentShortId), ms);
-    });
+    checkStatusNow(currentShortId);
   }
 });
 
