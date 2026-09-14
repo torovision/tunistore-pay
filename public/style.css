@@ -417,6 +417,92 @@ main {
   font-size: 13px; font-weight: 700; color: var(--brand-ink); letter-spacing: -0.01em;
 }
 
+/* VISA ANIMATED LOGO CARD */
+.trust-card-visa {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(26, 31, 113, 0.2);
+  background: #ffffff;
+}
+
+.trust-card-visa::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -150%;
+  width: 100%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 80%
+  );
+  transform: rotate(25deg);
+  animation: visaSweepLight 3.5s ease-in-out infinite;
+  animation-delay: 0.2s;
+  pointer-events: none;
+}
+
+@keyframes visaSweepLight {
+  0% { left: -150%; }
+  35%, 100% { left: 150%; }
+}
+
+.trust-visa-img {
+  height: 20px;
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.trust-card-visa:hover .trust-visa-img {
+  transform: scale(1.1) rotate(-2deg);
+}
+
+/* MASTERCARD ANIMATED LOGO CARD */
+.trust-card-mastercard {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(235, 0, 27, 0.2);
+  background: #ffffff;
+}
+
+.trust-card-mastercard::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -150%;
+  width: 100%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 80%
+  );
+  transform: rotate(25deg);
+  animation: mastercardSweepLight 3.5s ease-in-out infinite;
+  animation-delay: 0.4s;
+  pointer-events: none;
+}
+
+@keyframes mastercardSweepLight {
+  0% { left: -150%; }
+  35%, 100% { left: 150%; }
+}
+
+.trust-mastercard-img {
+  height: 22px;
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.trust-card-mastercard:hover .trust-mastercard-img {
+  transform: scale(1.1) rotate(2deg);
+}
+
 /* MONETIQUE ANIMATED LOGO CARD */
 .trust-card-monetique {
   position: relative;
