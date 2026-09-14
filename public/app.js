@@ -430,12 +430,47 @@ payIframe.addEventListener('load', () => {
     if (modalLoading) modalLoading.style.display = 'none';
   }
 
-  // Rapidly check status when iframe completes or redirects to app.kashy.tn
+  // Check if iframe redirected to app.kashy.tn (blocked by X-Frame-Options)
+  let iframeUrl = '';
+  try { iframeUrl = payIframe.contentWindow.location.href; } catch(e) { iframeUrl = ''; }
+
+  // If we can't read the iframe URL (cross-origin block from app.kashy.tn redirect),
+  // or if it redirected to kashy.tn, this means ClicToPay completed — check status aggressively
+  const isPostPaymentRedirect = iframeInitialLoaded && (
+    iframeUrl === '' ||
+    iframeUrl.includes('kashy.tn') ||
+    iframeUrl.includes('payment/success') ||
+    iframeUrl.includes('payment/failure')
+  );
+
   if (currentShortId) {
-    checkStatusNow(currentShortId);
-    setTimeout(() => checkStatusNow(currentShortId), 400);
-    setTimeout(() => checkStatusNow(currentShortId), 1000);
-    setTimeout(() => checkStatusNow(currentShortId), 1800);
+    if (isPostPaymentRedirect) {
+      console.log('[ClicToPay] Post-payment redirect detected — checking status aggressively...');
+      // Rapid-fire status checks: 0ms, 300ms, 800ms, 1.5s, 2.5s, 4s, 6s, 8s
+      const delays = [0, 300, 800, 1500, 2500, 4000, 6000, 8000];
+      delays.forEach(ms => {
+        setTimeout(async () => {
+          const done = await checkStatusNow(currentShortId);
+          if (done) console.log(`[ClicToPay] Payment resolved at ${ms}ms delay`);
+        }, ms);
+      });
+    } else {
+      checkStatusNow(currentShortId);
+      setTimeout(() => checkStatusNow(currentShortId), 400);
+      setTimeout(() => checkStatusNow(currentShortId), 1000);
+      setTimeout(() => checkStatusNow(currentShortId), 1800);
+    }
+  }
+});
+
+// Listen for iframe errors (ERR_BLOCKED_BY_RESPONSE from app.kashy.tn)
+payIframe.addEventListener('error', () => {
+  console.log('[ClicToPay] Iframe error (likely blocked by app.kashy.tn) — checking status...');
+  if (currentShortId) {
+    const delays = [0, 500, 1500, 3000, 5000];
+    delays.forEach(ms => {
+      setTimeout(() => checkStatusNow(currentShortId), ms);
+    });
   }
 });
 
@@ -524,7 +559,7 @@ async function checkStatusNow(shortId) {
 function startStatusPolling(shortId) {
   if (pollTimer) clearInterval(pollTimer);
   let attempts = 0;
-  const maxAttempts = 90; // 90 attempts * 1s = 90s
+  const maxAttempts = 180; // 180 attempts * 500ms = 90s
   
   pollTimer = setInterval(async () => {
     attempts++;
@@ -532,7 +567,7 @@ function startStatusPolling(shortId) {
     if (isDone || attempts >= maxAttempts) {
       clearInterval(pollTimer);
     }
-  }, 1000);
+  }, 500);
 }
 
 // --- RESULT SCREEN ---

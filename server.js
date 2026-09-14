@@ -142,7 +142,64 @@ async function handleApi(shortId) {
   const finalUrl = sanitizeUrl(rawFormUrl, orderId);
   const amount = sessionData ? sessionData.amount : 100000;
   const status = sessionData ? sessionData.status : 'INITIATED';
-  return { amount, formUrl: finalUrl, status };
+  return { amount, formUrl: finalUrl, status, orderId };
+}
+
+// Helper: Check ClicToPay order status via Kashy's bank-card status endpoint
+async function checkClicToPayOrderStatus(shortId) {
+  const authToken = activeToken;
+  if (!authToken) return null;
+
+  const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+
+  // Try multiple Kashy endpoints to get the real payment status
+  const endpoints = [
+    `https://api.kashy.tn/api/v1/payments/session/${shortId}`,
+    `https://api.kashy.tn/api/v1/payments/${shortId}`,
+    `https://api.kashy.tn/api/v1/wallets/bank-card/generic-bank-card-register/payments/${shortId}/status`
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const method = url.includes('/status') ? 'GET' : (url.includes('session') ? 'GET' : 'GET');
+      const r = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': authHeader
+        }
+      });
+
+      if (r.ok) {
+        const data = await r.json();
+        const raw = String(data.status || data.paymentStatus || data.orderStatus || '').toUpperCase();
+        
+        const isPaid = data.isPaid === true ||
+                       (data.totalCollected && data.totalCollected > 0) ||
+                       data.actionCode === 0 ||
+                       data.depositedAmount > 0 ||
+                       ['PAID', 'COMPLETED', 'SUCCESS', 'SETTLED', 'CLOSED', 'DONE', 'DEPOSITED', 'APPROVED'].includes(raw);
+
+        const isFailed = data.actionCode > 0 ||
+                         ['FAILED', 'EXPIRED', 'CANCELLED', 'DECLINED', 'REJECTED', 'REVERSED'].includes(raw);
+
+        if (isPaid || isFailed) {
+          console.log(`[ClicToPay Status] ${url} -> ${raw} (isPaid=${isPaid}, isFailed=${isFailed})`);
+          return {
+            status: isPaid ? 'PAID' : 'FAILED',
+            rawStatus: raw,
+            amount: data.amount || 0,
+            source: url
+          };
+        }
+      }
+    } catch (e) {
+      // Continue to next endpoint
+    }
+  }
+
+  return null;
 }
 
 // --- API ROUTES ---
@@ -1108,10 +1165,11 @@ app.post('/api/resolve-link', async (req, res) => {
   }
 });
 
-// Check payment status
+// Check payment status (Kashy session + ClicToPay order fallback)
 app.get('/api/check-status/:shortId', async (req, res) => {
   const { shortId } = req.params;
   try {
+    // 1. Check Kashy session first
     const r = await fetch(`https://api.kashy.tn/api/v1/payments/session/${shortId}`);
     if (!r.ok) return res.status(404).json({ error: 'Session introuvable.' });
     const data = await r.json();
@@ -1123,8 +1181,30 @@ app.get('/api/check-status/:shortId', async (req, res) => {
 
     const isFailed = ['FAILED', 'EXPIRED', 'CANCELLED', 'DECLINED', 'REJECTED'].includes(rawStatus);
 
+    if (isPaid || isFailed) {
+      return res.json({
+        status: isPaid ? 'PAID' : 'FAILED',
+        rawStatus: data.status,
+        amount: data.amount || 0,
+        shortId
+      });
+    }
+
+    // 2. If Kashy session is still INITIATED/PENDING, try ClicToPay order status
+    const ctpStatus = await checkClicToPayOrderStatus(shortId);
+    if (ctpStatus && (ctpStatus.status === 'PAID' || ctpStatus.status === 'FAILED')) {
+      return res.json({
+        status: ctpStatus.status,
+        rawStatus: ctpStatus.rawStatus,
+        amount: ctpStatus.amount || data.amount || 0,
+        shortId,
+        source: 'clictopay'
+      });
+    }
+
+    // 3. Still pending
     res.json({
-      status: isPaid ? 'PAID' : (isFailed ? 'FAILED' : (data.status || 'PENDING')),
+      status: data.status || 'PENDING',
       rawStatus: data.status,
       amount: data.amount || 0,
       shortId
