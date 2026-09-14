@@ -402,8 +402,8 @@ main {
 
 .trust-card:hover {
   transform: translateY(-4px) scale(1.05);
-  border-color: rgba(202, 255, 0, 0.5);
-  box-shadow: 0 12px 30px rgba(202, 255, 0, 0.4), 0 0 0 2px rgba(202, 255, 0, 0.6);
+  border-color: rgba(202, 255, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(202, 255, 0, 0.15), 0 0 0 1px rgba(202, 255, 0, 0.3);
   background: #ffffff;
 }
 
@@ -1278,8 +1278,8 @@ footer {
 }
 .bank-card:hover {
   transform: translateY(-4px) scale(1.05);
-  border-color: rgba(202, 255, 0, 0.5);
-  box-shadow: 0 12px 30px rgba(202, 255, 0, 0.4), 0 0 0 2px rgba(202, 255, 0, 0.6);
+  border-color: rgba(202, 255, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(202, 255, 0, 0.15), 0 0 0 1px rgba(202, 255, 0, 0.3);
   background: #ffffff;
 }
 .bank-logo-badge {
