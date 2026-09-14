@@ -352,7 +352,14 @@ async function getPuppeteerPage() {
       '--disable-gpu',
       '--no-first-run',
       '--no-zygote',
-      '--disable-extensions'
+      '--disable-extensions',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-hang-monitor',
+      '--disable-ipc-flooding-protection',
+      '--password-store=basic',
+      '--use-mock-keychain'
     ];
 
     // Try project-detected chrome first
@@ -1467,6 +1474,17 @@ app.get('/payx', (req, res) => {
   res.sendFile(join(__dirname, 'public', 'admin.html'));
 });
 
+// Ping & Chrome Heartbeat Endpoint
+app.get('/api/ping', async (req, res) => {
+  if (isPageOpen(puppeteerPage)) {
+    try {
+      await puppeteerPage.evaluate(() => document.title).catch(() => {});
+      await autoExtractTokenFromPage(puppeteerPage);
+    } catch(e) {}
+  }
+  res.json({ status: 'ok', activeToken: !!activeToken, timestamp: new Date().toISOString() });
+});
+
 // Fallback to index
 app.use((req, res) => {
   res.sendFile(join(__dirname, 'public', 'index.html'));
@@ -1485,14 +1503,22 @@ app.listen(PORT, () => {
   console.log(`⚡ [Boot] Initializing 24/7 Session Keeper for ${phoneToKeep}...`);
   startAutoRefreshLoop(phoneToKeep);
 
-  // --- KEEP-ALIVE: Self-ping every 10 minutes to prevent Render cold starts ---
-  if (process.env.RENDER_EXTERNAL_URL || process.env.RENDER) {
-    const selfUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-    setInterval(async () => {
+  // 30-second Chrome Anti-Sleep Heartbeat Loop
+  setInterval(async () => {
+    if (isPageOpen(puppeteerPage)) {
       try {
-        await fetch(`${selfUrl}/api/ping`);
-        console.log(`[keep-alive] pinged at ${new Date().toISOString()}`);
-      } catch (e) { /* ignore */ }
-    }, 10 * 60 * 1000); // every 10 minutes
-  }
+        await puppeteerPage.evaluate(() => document.title).catch(() => {});
+        await autoExtractTokenFromPage(puppeteerPage);
+      } catch(e) {}
+    }
+  }, 30 * 1000);
+
+  // --- KEEP-ALIVE: Self-ping every 5 minutes to prevent Render cold starts ---
+  const selfUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  setInterval(async () => {
+    try {
+      await fetch(`${selfUrl}/api/ping`);
+      console.log(`[keep-alive] Pinged ${selfUrl}/api/ping at ${new Date().toISOString()}`);
+    } catch (e) { /* ignore */ }
+  }, 5 * 60 * 1000); // every 5 minutes
 });
