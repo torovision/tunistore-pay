@@ -1,5 +1,6 @@
 // --- STATE ---
 let currentShortId = null;
+let currentPaymentId = null;
 let pollTimer = null;
 let createdLinkInput = null;
 let createdLinkData = null;
@@ -277,6 +278,7 @@ btnPay.addEventListener('click', async () => {
     }
 
     currentShortId = data.shortId;
+    currentPaymentId = data.paymentId || data.id || null;
 
     // Show amount preview and share button
     amountValue.textContent = formatTnd(data.amount);
@@ -451,12 +453,19 @@ async function onCheckModalStatusClick() {
 }
 
 btnCloseModal.addEventListener('click', () => {
+  const shortIdToCancel = currentShortId;
+  const paymentIdToCancel = currentPaymentId;
+
   closePayModalSilently();
 
-  // Start polling for payment status if not already finished
-  if (currentShortId) {
-    showVerifying();
-    startStatusPolling(currentShortId);
+  // Automatically delete/cancel payment link on Kashy Dashboard when modal is closed
+  if (shortIdToCancel) {
+    console.log('[Modal Close] Cancelling & deleting Kashy link:', shortIdToCancel, paymentIdToCancel);
+    fetch('/api/cancel-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shortId: shortIdToCancel, paymentId: paymentIdToCancel })
+    }).catch(() => {});
   }
 });
 

@@ -1145,9 +1145,10 @@ app.post('/api/create-link-by-amount', async (req, res) => {
       if (r.ok) {
         const data = await r.json();
         const shortId = data.shortId || data.id || data.code;
+        const paymentId = data.id || data._id || data.requestId;
         if (shortId) {
           const apiRes = await handleApi(shortId);
-          return res.json({ shortId, ...apiRes, amount: amountMillimes });
+          return res.json({ shortId, paymentId, ...apiRes, amount: amountMillimes });
         }
       } else {
         const errText = await r.text();
@@ -1169,6 +1170,99 @@ app.post('/api/create-link-by-amount', async (req, res) => {
   }
 
   res.status(401).json({ error: 'Session Kashy expirée. Veuillez recharger votre session Kashy ou fournir un jeton d\'autorisation valide.' });
+});
+
+// NEW: Delete/Cancel payment link on Kashy Dashboard
+app.post('/api/cancel-payment', async (req, res) => {
+  const { shortId, paymentId } = req.body;
+  const targetId = paymentId || shortId;
+
+  if (!targetId && !shortId) {
+    return res.status(400).json({ error: 'ID de paiement manquant.' });
+  }
+
+  console.log(`[CancelPayment] Request to delete link ${targetId} (shortId: ${shortId})...`);
+
+  let deleted = false;
+  let methodUsed = null;
+
+  // 1. Direct API Deletion
+  if (activeToken) {
+    const authHeader = activeToken.startsWith('Bearer ') ? activeToken : `Bearer ${activeToken}`;
+    const candidates = [targetId, shortId].filter(Boolean);
+
+    for (const cid of candidates) {
+      const urls = [
+        `https://api.kashy.tn/api/v1/payments/${cid}`,
+        `https://api.kashy.tn/api/v1/payments/request/${cid}`,
+        `https://api.kashy.tn/api/v1/payments/link/${cid}`
+      ];
+
+      for (const url of urls) {
+        try {
+          const delRes = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authHeader
+            }
+          });
+          console.log(`[CancelPayment] DELETE ${url} -> Status ${delRes.status}`);
+          if (delRes.ok || delRes.status === 200 || delRes.status === 204) {
+            deleted = true;
+            methodUsed = 'api';
+            break;
+          }
+        } catch (e) {
+          console.error(`[CancelPayment] Error deleting via API (${url}):`, e.message);
+        }
+      }
+      if (deleted) break;
+    }
+  }
+
+  // 2. Puppeteer Browser Fallback Deletion
+  if (!deleted && isPageOpen(puppeteerPage)) {
+    try {
+      console.log(`[CancelPayment] Attempting Puppeteer browser deletion for ${targetId}...`);
+      const puppeteerRes = await puppeteerPage.evaluate(async (tid, sid) => {
+        const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || sessionStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+
+        const candidates = [tid, sid].filter(Boolean);
+        for (const cid of candidates) {
+          const urls = [
+            `https://api.kashy.tn/api/v1/payments/${cid}`,
+            `https://api.kashy.tn/api/v1/payments/request/${cid}`,
+            `https://api.kashy.tn/api/v1/payments/link/${cid}`
+          ];
+          for (const u of urls) {
+            try {
+              const r = await fetch(u, { method: 'DELETE', headers });
+              if (r.ok || r.status === 200 || r.status === 204) return true;
+            } catch(e) {}
+          }
+        }
+        return false;
+      }, targetId, shortId);
+
+      if (puppeteerRes) {
+        deleted = true;
+        methodUsed = 'puppeteer';
+      }
+    } catch (e) {
+      console.error('[CancelPayment] Puppeteer deletion error:', e.message);
+    }
+  }
+
+  if (deleted) {
+    console.log(`⚡ [CancelPayment] Lien de paiement Kashy ${targetId} supprimé avec succès (${methodUsed}) !`);
+    res.json({ success: true, message: 'Lien de paiement supprimé du tableau de bord Kashy.', method: methodUsed });
+  } else {
+    console.log(`⚠️ [CancelPayment] Tentative de suppression du lien ${targetId} effectuée.`);
+    res.json({ success: false, message: 'Fermeture enregistrée.' });
+  }
 });
 
 // OLD: Resolve by amount (backward compatible)
