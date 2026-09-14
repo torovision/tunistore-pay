@@ -1222,6 +1222,8 @@ app.get('/api/check-status/:shortId', async (req, res) => {
   }
 });
 
+const recentCreatedLinksCache = new Map();
+
 // NEW: Create or resolve link by dynamic amount (e.g. 231 DT or 180.120 TND)
 app.post('/api/create-link-by-amount', async (req, res) => {
   const { amountDT } = req.body;
@@ -1238,6 +1240,15 @@ app.post('/api/create-link-by-amount', async (req, res) => {
 
   const walletId = process.env.KASHY_WALLET_ID || '6a31ce809be8256c365cbfe3';
   const amountMillimes = Math.round(numAmount * 1000);
+
+  // Deduplicate rapid consecutive requests for the same amount within 5 seconds
+  const cacheKey = `amount_${amountMillimes}`;
+  const existingCache = recentCreatedLinksCache.get(cacheKey);
+  if (existingCache && (Date.now() - existingCache.timestamp < 5000)) {
+    console.log(`[CreateLink] Deduplicating request for ${numAmount} DT (reusing link created ${Date.now() - existingCache.timestamp}ms ago)`);
+    return res.json(existingCache.data);
+  }
+
   let createdData = null;
 
   // Attempt 1: Direct API fetch (with auto-refresh retry on 401)
@@ -1309,7 +1320,9 @@ app.post('/api/create-link-by-amount', async (req, res) => {
     const paymentId = createdData.id || createdData._id || createdData.requestId;
     if (shortId) {
       const apiRes = await handleApi(shortId);
-      return res.json({ shortId, paymentId, ...apiRes, amount: amountMillimes });
+      const responseData = { shortId, paymentId, ...apiRes, amount: amountMillimes };
+      recentCreatedLinksCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+      return res.json(responseData);
     }
   }
 

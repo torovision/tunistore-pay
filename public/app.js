@@ -234,9 +234,15 @@ async function autoResolvePreview(input) {
 }
 
 // --- PAYMENT FLOW ---
+let isSubmittingPay = false;
+
 btnPay.addEventListener('click', async () => {
+  if (isSubmittingPay) return;
   const input = linkInput.value.trim();
   if (!input) return;
+
+  isSubmittingPay = true;
+  btnPay.disabled = true;
 
   // Loading state
   setLoading(true);
@@ -247,6 +253,7 @@ btnPay.addEventListener('click', async () => {
 
   if (isNumericAmount && parsedNum > 500) {
     setLoading(false);
+    isSubmittingPay = false;
     errorMsg.textContent = 'Le montant maximum autorisé par transaction est de 500 DT.';
     errorMsg.classList.remove('hidden');
     return;
@@ -297,6 +304,8 @@ btnPay.addEventListener('click', async () => {
     errorMsg.textContent = err.message;
     errorMsg.classList.remove('hidden');
     gsap.fromTo('.card', { x: -10 }, { x: 10, duration: 0.1, yoyo: true, repeat: 3, ease: "power1.inOut", onComplete: () => gsap.set('.card', {x: 0}) });
+  } finally {
+    isSubmittingPay = false;
   }
 });
 
