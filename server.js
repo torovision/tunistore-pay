@@ -1230,50 +1230,89 @@ app.post('/api/create-link-by-amount', async (req, res) => {
   }
 
   const walletId = process.env.KASHY_WALLET_ID || '6a31ce809be8256c365cbfe3';
-  const authToken = activeToken;
   const amountMillimes = Math.round(numAmount * 1000);
+  let createdData = null;
 
-  if (authToken) {
-    const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
-    
-    try {
-      const r = await fetch('https://api.kashy.tn/api/v1/payments/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authHeader
-        },
-        body: JSON.stringify({
-          walletId,
-          amount: amountMillimes,
-          description: `Paiement ${numAmount} DT via TunPay`
-        })
-      });
+  // Attempt 1: Direct API fetch (with auto-refresh retry on 401)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let authToken = activeToken;
+    if (authToken) {
+      const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+      
+      try {
+        const r = await fetch('https://api.kashy.tn/api/v1/payments/request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            walletId,
+            amount: amountMillimes,
+            description: `Paiement ${numAmount} DT via TunPay`
+          })
+        });
 
-      if (r.ok) {
-        const data = await r.json();
-        const shortId = data.shortId || data.id || data.code;
-        const paymentId = data.id || data._id || data.requestId;
-        if (shortId) {
-          const apiRes = await handleApi(shortId);
-          return res.json({ shortId, paymentId, ...apiRes, amount: amountMillimes });
+        if (r.ok) {
+          createdData = await r.json();
+          break;
+        } else if (r.status === 401 && attempt === 0) {
+          console.log('[CreateLink] 401 Unauthorized — Auto-extracting fresh token from Chrome...');
+          if (isPageOpen(puppeteerPage)) {
+            await autoExtractTokenFromPage(puppeteerPage);
+          }
+        } else {
+          const errText = await r.text();
+          console.error(`[CreateLink] Kashy payments/request attempt ${attempt + 1} status: ${r.status}`, errText);
         }
-      } else {
-        const errText = await r.text();
-        console.error('Kashy payments/request error status:', r.status, errText);
+      } catch (e) {
+        console.error('[CreateLink] Kashy link creation fetch error:', e.message);
       }
-    } catch (e) {
-      console.error('Kashy link creation error:', e);
     }
   }
 
-  // Fallback if token is expired or link creation fails
+  // Attempt 2: Fallback in-browser link creation via active Puppeteer Chrome session
+  if (!createdData && isPageOpen(puppeteerPage)) {
+    try {
+      console.log('[CreateLink] Attempting in-browser payment creation via Puppeteer Chrome session...');
+      createdData = await puppeteerPage.evaluate(async (wid, amt, desc) => {
+        const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || sessionStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+
+        const r = await fetch('https://api.kashy.tn/api/v1/payments/request', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ walletId: wid, amount: amt, description: desc })
+        });
+        if (r.ok) return await r.json();
+        return null;
+      }, walletId, amountMillimes, `Paiement ${numAmount} DT via TunPay`);
+
+      if (createdData) {
+        console.log('[CreateLink] In-browser payment link created successfully!');
+      }
+    } catch (e) {
+      console.error('[CreateLink] In-browser payment creation failed:', e.message);
+    }
+  }
+
+  if (createdData) {
+    const shortId = createdData.shortId || createdData.id || createdData.code;
+    const paymentId = createdData.id || createdData._id || createdData.requestId;
+    if (shortId) {
+      const apiRes = await handleApi(shortId);
+      return res.json({ shortId, paymentId, ...apiRes, amount: amountMillimes });
+    }
+  }
+
+  // Fallback to static links if link creation fails
   const links = getLinks();
-  const shortId = links[numAmount.toString()] || links[`${Math.round(numAmount)}`];
-  if (shortId) {
-    const apiRes = await handleApi(shortId);
+  const fallbackShortId = links[numAmount.toString()] || links[`${Math.round(numAmount)}`];
+  if (fallbackShortId) {
+    const apiRes = await handleApi(fallbackShortId);
     if (apiRes && apiRes.formUrl) {
-      return res.json({ shortId, ...apiRes, amount: amountMillimes });
+      return res.json({ shortId: fallbackShortId, ...apiRes, amount: amountMillimes });
     }
   }
 
