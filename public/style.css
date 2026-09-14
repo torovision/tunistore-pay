@@ -401,9 +401,9 @@ main {
 }
 
 .trust-card:hover {
-  transform: translateY(-4px) scale(1.05);
-  border-color: rgba(202, 255, 0, 0.3);
-  box-shadow: 0 8px 24px rgba(202, 255, 0, 0.15), 0 0 0 1px rgba(202, 255, 0, 0.3);
+  transform: translateY(-3px) scale(1.03);
+  border-color: var(--gray-300);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   background: #ffffff;
 }
 
@@ -421,9 +421,8 @@ main {
 .trust-card-monetique {
   position: relative;
   overflow: hidden;
-  border-color: rgba(200, 16, 46, 0.25);
-  background: linear-gradient(135deg, #ffffff 0%, #fff8f8 100%);
-  animation: monetiquePulseGlow 3s ease-in-out infinite;
+  border-color: rgba(200, 16, 46, 0.2);
+  background: #ffffff;
 }
 
 .trust-card-monetique::before {
@@ -444,17 +443,6 @@ main {
   pointer-events: none;
 }
 
-@keyframes monetiquePulseGlow {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03), 0 0 0 0 rgba(200, 16, 46, 0.2);
-    border-color: rgba(200, 16, 46, 0.25);
-  }
-  50% {
-    box-shadow: 0 4px 18px rgba(200, 16, 46, 0.18), 0 0 12px 2px rgba(200, 16, 46, 0.22);
-    border-color: rgba(200, 16, 46, 0.55);
-  }
-}
-
 @keyframes monetiqueSweepLight {
   0% { left: -150%; }
   35%, 100% { left: 150%; }
@@ -465,21 +453,18 @@ main {
   width: auto;
   object-fit: contain;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
 }
 
 .trust-card-monetique:hover .trust-monetique-img {
-  transform: scale(1.15) rotate(-3deg);
+  transform: scale(1.1) rotate(-2deg);
 }
 
 /* CLICTOPAY ANIMATED LOGO CARD */
 .trust-card-clictopay {
   position: relative;
   overflow: hidden;
-  border-color: rgba(243, 112, 33, 0.25);
-  background: linear-gradient(135deg, #ffffff 0%, #fffbf6 100%);
-  animation: clictopayPulseGlow 3s ease-in-out infinite;
-  animation-delay: 0.5s;
+  border-color: rgba(243, 112, 33, 0.2);
+  background: #ffffff;
 }
 
 .trust-card-clictopay::before {
@@ -501,17 +486,6 @@ main {
   pointer-events: none;
 }
 
-@keyframes clictopayPulseGlow {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03), 0 0 0 0 rgba(243, 112, 33, 0.2);
-    border-color: rgba(243, 112, 33, 0.25);
-  }
-  50% {
-    box-shadow: 0 4px 18px rgba(243, 112, 33, 0.18), 0 0 12px 2px rgba(243, 112, 33, 0.22);
-    border-color: rgba(243, 112, 33, 0.55);
-  }
-}
-
 @keyframes clictopaySweepLight {
   0% { left: -150%; }
   35%, 100% { left: 150%; }
@@ -522,11 +496,10 @@ main {
   width: auto;
   object-fit: contain;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
 }
 
 .trust-card-clictopay:hover .trust-clictopay-img {
-  transform: scale(1.15) rotate(3deg);
+  transform: scale(1.1) rotate(2deg);
 }
 
 /* RESULT SCREEN */
