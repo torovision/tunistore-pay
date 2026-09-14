@@ -442,8 +442,9 @@ function handleNewTokenExtracted(rawOrFormattedToken, source = 'Auto') {
   if (!activeToken || activeToken !== formatted) {
     activeToken = formatted;
     process.env.KASHY_AUTH_TOKEN = formatted;
-    const phone = puppeteerState.phone || '+21653772707';
-    saveSession({ activeToken: formatted, phone });
+    const session = loadSession() || {};
+    const phone = session.phone || puppeteerState.phone || '+21653772707';
+    saveSession({ activeToken: formatted, phone, password: session.password });
 
     const expMs = getTokenExpiry(formatted);
     const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -524,85 +525,103 @@ async function autoExtractTokenFromPage(page) {
 }
 
 /**
- * Start auto-refresh loop: re-authenticates with Kashy API every 25 min
- * so the 30-min JWT never expires while the server is running.
+ * 24/7 Background Session Keeper & Silent Auto-Re-Login Loop.
+ * Ensures the Kashy Bearer Token is ALWAYS active and auto-captured 24/7/365.
  */
+let autoKeepAliveTimer = null;
+
 function startAutoRefreshLoop(phone) {
-  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  if (autoKeepAliveTimer) clearInterval(autoKeepAliveTimer);
 
-  autoRefreshTimer = setInterval(async () => {
-    console.log('[Auto-Refresh] Attempting Kashy token refresh...');
+  // Run initial check after 5 seconds
+  setTimeout(() => performAutoKeepAliveAndReauth(phone), 5000);
 
-    // Strategy 1: If Puppeteer page is open with a valid session, extract fresh token
-    try {
-      if (isPageOpen(puppeteerPage)) {
-        await puppeteerPage.reload({ waitUntil: 'networkidle2', timeout: 15000 });
-        const freshToken = await puppeteerPage.evaluate(() => {
-          return localStorage.getItem('token') ||
-                 localStorage.getItem('auth_token') ||
-                 localStorage.getItem('access_token') ||
-                 sessionStorage.getItem('token');
-        });
-        if (freshToken && freshToken.length > 50) {
-          const formatted = freshToken.trim().startsWith('Bearer ') ? freshToken.trim() : `Bearer ${freshToken.trim()}`;
-          activeToken = formatted;
-          process.env.KASHY_AUTH_TOKEN = formatted;
-          saveSession({ activeToken: formatted, phone: phone || puppeteerState.phone });
-          const expMs = getTokenExpiry(formatted);
-          const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
-          puppeteerState.status = 'connected';
-          puppeteerState.message = `Session auto-rafraîchie (~${remainingMinutes || '?'} min)`;
-          puppeteerState.lastRefresh = Date.now();
-          puppeteerState.lastUpdated = Date.now();
-          console.log(`[Auto-Refresh] Token refreshed via Puppeteer. ~${remainingMinutes} min remaining.`);
-          return;
-        }
-      }
-    } catch (e) {
-      console.error('[Auto-Refresh] Puppeteer refresh failed:', e.message);
-    }
+  // Run continuous check every 3 minutes
+  autoKeepAliveTimer = setInterval(() => {
+    performAutoKeepAliveAndReauth(phone);
+  }, 3 * 60 * 1000);
+}
 
-    // Strategy 2: Try Kashy API refresh endpoint
-    try {
-      const currentRaw = activeToken.replace('Bearer ', '').trim();
-      const refreshRes = await fetch('https://api.kashy.tn/api/v1/auth/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentRaw}`
-        }
-      });
-      if (refreshRes.ok) {
-        const data = await refreshRes.json();
-        const rawToken = data.token || data.accessToken || data.bearer;
-        if (rawToken) {
-          const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
-          activeToken = formatted;
-          process.env.KASHY_AUTH_TOKEN = formatted;
-          saveSession({ activeToken: formatted, phone: phone || puppeteerState.phone });
-          const expMs = getTokenExpiry(formatted);
-          const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
-          puppeteerState.status = 'connected';
-          puppeteerState.message = `Session auto-rafraîchie via API (~${remainingMinutes || '?'} min)`;
-          puppeteerState.lastRefresh = Date.now();
-          puppeteerState.lastUpdated = Date.now();
-          console.log(`[Auto-Refresh] Token refreshed via API. ~${remainingMinutes} min remaining.`);
-          return;
-        }
-      }
-    } catch (e) {
-      console.error('[Auto-Refresh] API refresh failed:', e.message);
-    }
+async function performAutoKeepAliveAndReauth(phone) {
+  try {
+    const session = loadSession() || {};
+    const currentPhone = phone || session.phone || puppeteerState.phone || '+21653772707';
+    const currentPassword = session.password;
 
-    // If both strategies failed, mark as expired
     const expMs = getTokenExpiry(activeToken);
-    if (expMs && Date.now() >= expMs) {
-      puppeteerState.status = 'expired';
-      puppeteerState.message = 'Session expirée. Reconnectez-vous via SMS OTP.';
-      puppeteerState.lastUpdated = Date.now();
-      console.log('[Auto-Refresh] Token expired. Manual re-login required.');
+    const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : 0;
+    const isExpiringSoon = !expMs || remainingMinutes < 10;
+
+    console.log(`[Auto-Keeper] Session check... Active: ${!isExpiringSoon}, Remaining: ~${remainingMinutes} min`);
+
+    // If token is healthy (> 10 min left), just scan page storage if page open
+    if (!isExpiringSoon && activeToken) {
+      if (isPageOpen(puppeteerPage)) {
+        await autoExtractTokenFromPage(puppeteerPage);
+      }
+      return;
     }
-  }, 10 * 60 * 1000); // Every 10 minutes
+
+    // Token expiring soon or invalid -> Auto re-authenticate via Puppeteer
+    console.log('[Auto-Keeper] Token expiring or invalid. Re-authenticating automatically...');
+    const page = await getPuppeteerPage();
+
+    // Check active page storage first
+    const freshFromStorage = await autoExtractTokenFromPage(page);
+    if (freshFromStorage) {
+      const exp = getTokenExpiry(freshFromStorage);
+      if (exp && exp > Date.now() + 10 * 60000) {
+        console.log('[Auto-Keeper] Successfully extracted fresh token from active page.');
+        return;
+      }
+    }
+
+    // Navigate to auth page to trigger auto-login via persistent Chrome profile
+    await page.goto('https://app.kashy.tn/en/auth', { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+    await new Promise(r => setTimeout(r, 2500));
+
+    // Try auto-extracting after navigation (if cookies auto-logged in)
+    const postNavToken = await autoExtractTokenFromPage(page);
+    if (postNavToken) {
+      const exp = getTokenExpiry(postNavToken);
+      if (exp && exp > Date.now() + 10 * 60000) {
+        console.log('[Auto-Keeper] Token auto-refreshed via persistent session navigation!');
+        return;
+      }
+    }
+
+    // If login form is displayed and saved password exists, perform silent background login
+    if (currentPassword) {
+      console.log(`[Auto-Keeper] Attempting silent background login for ${currentPhone}...`);
+      const phoneInput = await page.$('input[name="email"], input[type="tel"]');
+      if (phoneInput) {
+        await phoneInput.click({ clickCount: 3 });
+        await phoneInput.press('Backspace');
+        await phoneInput.type(currentPhone.replace('+216', '').replace(/\D/g, ''), { delay: 40 });
+      }
+
+      const pinInput = await page.$('input[name="pin"], input[type="password"]');
+      if (pinInput) {
+        await pinInput.click({ clickCount: 3 });
+        await pinInput.press('Backspace');
+        await pinInput.type(currentPassword, { delay: 40 });
+      }
+
+      const buttons = await page.$$('button');
+      for (const btn of buttons) {
+        const text = await btn.evaluate(el => el.textContent.toLowerCase().trim());
+        if (text.includes('sign in') || text.includes('connexion') || text.includes('se connecter')) {
+          await btn.click();
+          break;
+        }
+      }
+
+      await new Promise(r => setTimeout(r, 4000));
+      await autoExtractTokenFromPage(page);
+    }
+  } catch (e) {
+    console.error('[Auto-Keeper] Auto-reauth error:', e.message);
+  }
 }
 
 // Direct Kashy Login (Phone + Password/PIN) via API & Puppeteer fallback
@@ -636,7 +655,7 @@ app.post('/api/admin/kashy-login', async (req, res) => {
         const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
         activeToken = formatted;
         process.env.KASHY_AUTH_TOKEN = formatted;
-        saveSession({ activeToken: formatted, phone: cleanPhone });
+        saveSession({ activeToken: formatted, phone: cleanPhone, password });
 
         const expMs = getTokenExpiry(formatted);
         const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -743,7 +762,7 @@ app.post('/api/admin/kashy-login', async (req, res) => {
       const formatted = extractedToken.trim().startsWith('Bearer ') ? extractedToken.trim() : `Bearer ${extractedToken.trim()}`;
       activeToken = formatted;
       process.env.KASHY_AUTH_TOKEN = formatted;
-      saveSession({ activeToken: formatted, phone: cleanPhone });
+      saveSession({ activeToken: formatted, phone: cleanPhone, password });
 
       const expMs = getTokenExpiry(formatted);
       const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -1310,6 +1329,12 @@ app.listen(PORT, () => {
   console.log(`  Local:   \x1b[36mhttp://localhost:${PORT}/\x1b[0m`);
   console.log(`  Admin:   \x1b[36mhttp://localhost:${PORT}/payx\x1b[0m`);
   console.log();
+
+  // Start 24/7 Session Keeper Loop on server startup
+  const savedSession = loadSession();
+  const phoneToKeep = (savedSession && savedSession.phone) || '+21653772707';
+  console.log(`⚡ [Boot] Initializing 24/7 Session Keeper for ${phoneToKeep}...`);
+  startAutoRefreshLoop(phoneToKeep);
 
   // --- KEEP-ALIVE: Self-ping every 10 minutes to prevent Render cold starts ---
   if (process.env.RENDER_EXTERNAL_URL || process.env.RENDER) {
