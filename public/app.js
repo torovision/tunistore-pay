@@ -428,46 +428,36 @@ payIframe.addEventListener('load', () => {
   if (!iframeInitialLoaded) {
     iframeInitialLoaded = true;
     if (modalLoading) modalLoading.style.display = 'none';
+    return;
   }
 
-  // Check if iframe redirected to app.kashy.tn (blocked by X-Frame-Options)
-  let iframeUrl = '';
-  try { iframeUrl = payIframe.contentWindow.location.href; } catch(e) { iframeUrl = ''; }
+  // When iframe loads a SECOND time, ClicToPay has submitted and redirected to Kashy redirect URL
+  // (which browser blocks due to X-Frame-Options, showing "app.kashy.tn n'autorise pas la connexion")
+  console.log('[ClicToPay] Secondary iframe load detected (Post-payment redirect!). Auto-closing modal...');
 
-  // If we can't read the iframe URL (cross-origin block from app.kashy.tn redirect),
-  // or if it redirected to kashy.tn, this means ClicToPay completed — check status aggressively
-  const isPostPaymentRedirect = iframeInitialLoaded && (
-    iframeUrl === '' ||
-    iframeUrl.includes('kashy.tn') ||
-    iframeUrl.includes('payment/success') ||
-    iframeUrl.includes('payment/failure')
-  );
+  // Instantly hide iframe modal so user never sees "app.kashy.tn n'autorise pas la connexion"
+  closePayModalSilently();
+  showVerifying();
 
+  // Check status aggressively
   if (currentShortId) {
-    if (isPostPaymentRedirect) {
-      console.log('[ClicToPay] Post-payment redirect detected — checking status aggressively...');
-      // Rapid-fire status checks: 0ms, 300ms, 800ms, 1.5s, 2.5s, 4s, 6s, 8s
-      const delays = [0, 300, 800, 1500, 2500, 4000, 6000, 8000];
-      delays.forEach(ms => {
-        setTimeout(async () => {
-          const done = await checkStatusNow(currentShortId);
-          if (done) console.log(`[ClicToPay] Payment resolved at ${ms}ms delay`);
-        }, ms);
-      });
-    } else {
-      checkStatusNow(currentShortId);
-      setTimeout(() => checkStatusNow(currentShortId), 400);
-      setTimeout(() => checkStatusNow(currentShortId), 1000);
-      setTimeout(() => checkStatusNow(currentShortId), 1800);
-    }
+    const delays = [0, 200, 500, 1000, 1800, 2800, 4000, 6000];
+    delays.forEach(ms => {
+      setTimeout(async () => {
+        const done = await checkStatusNow(currentShortId);
+        if (done) console.log(`[ClicToPay] Payment resolved at ${ms}ms delay`);
+      }, ms);
+    });
   }
 });
 
 // Listen for iframe errors (ERR_BLOCKED_BY_RESPONSE from app.kashy.tn)
 payIframe.addEventListener('error', () => {
-  console.log('[ClicToPay] Iframe error (likely blocked by app.kashy.tn) — checking status...');
+  console.log('[ClicToPay] Iframe error / blocked by response — auto-closing modal and checking status...');
+  closePayModalSilently();
+  showVerifying();
   if (currentShortId) {
-    const delays = [0, 500, 1500, 3000, 5000];
+    const delays = [0, 300, 800, 1500, 3000, 5000];
     delays.forEach(ms => {
       setTimeout(() => checkStatusNow(currentShortId), ms);
     });
