@@ -428,12 +428,27 @@ payIframe.addEventListener('load', () => {
     if (modalLoading) modalLoading.style.display = 'none';
   }
 
-  // Check if iframe redirected to failure/success URL
+  // Check if iframe redirected to failure/success URL or encountered X-Frame block
   const handled = checkIframeRedirect();
   if (!handled && currentShortId) {
     checkStatusNow(currentShortId);
   }
 });
+
+// Manual / Auto Check Status Handler from inside Modal
+async function onCheckModalStatusClick() {
+  if (!currentShortId) return;
+  const btn = document.getElementById('btnCheckModalStatus');
+  if (btn) {
+    btn.textContent = '⌛ Vérification...';
+    btn.disabled = true;
+  }
+  const isDone = await checkStatusNow(currentShortId);
+  if (!isDone && btn) {
+    btn.textContent = '⚡ Vérifier le statut';
+    btn.disabled = false;
+  }
+}
 
 btnCloseModal.addEventListener('click', () => {
   closePayModalSilently();
