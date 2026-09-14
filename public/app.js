@@ -430,27 +430,14 @@ payIframe.addEventListener('load', () => {
     if (modalLoading) modalLoading.style.display = 'none';
   }
 
-  // Check if iframe redirected to failure/success URL or encountered X-Frame block
-  const handled = checkIframeRedirect();
-  if (!handled && currentShortId) {
+  // Rapidly check status when iframe completes or redirects to app.kashy.tn
+  if (currentShortId) {
     checkStatusNow(currentShortId);
+    setTimeout(() => checkStatusNow(currentShortId), 400);
+    setTimeout(() => checkStatusNow(currentShortId), 1000);
+    setTimeout(() => checkStatusNow(currentShortId), 1800);
   }
 });
-
-// Manual / Auto Check Status Handler from inside Modal
-async function onCheckModalStatusClick() {
-  if (!currentShortId) return;
-  const btn = document.getElementById('btnCheckModalStatus');
-  if (btn) {
-    btn.textContent = '⌛ Vérification...';
-    btn.disabled = true;
-  }
-  const isDone = await checkStatusNow(currentShortId);
-  if (!isDone && btn) {
-    btn.textContent = '⚡ Vérifier le statut';
-    btn.disabled = false;
-  }
-}
 
 btnCloseModal.addEventListener('click', () => {
   const shortIdToCancel = currentShortId;
@@ -537,36 +524,15 @@ async function checkStatusNow(shortId) {
 function startStatusPolling(shortId) {
   if (pollTimer) clearInterval(pollTimer);
   let attempts = 0;
-  const maxAttempts = 30; // 30 attempts * 2s = 60s
+  const maxAttempts = 90; // 90 attempts * 1s = 90s
   
   pollTimer = setInterval(async () => {
     attempts++;
-    try {
-      const res = await fetch(`/api/check-status/${shortId}`);
-      const data = await res.json();
-
-      if (data.status === 'PAID' || data.status === 'paid' || data.status === 'SUCCESS' || data.status === 'COMPLETED') {
-        clearInterval(pollTimer);
-        closePayModalSilently();
-        const amountDT = (data.amount / 1000).toFixed(0);
-        showResult('success', amountDT);
-      } else if (data.status === 'FAILED' || data.status === 'EXPIRED' || data.status === 'CANCELLED') {
-        clearInterval(pollTimer);
-        closePayModalSilently();
-        showResult('fail');
-      } else if (attempts >= maxAttempts) {
-        clearInterval(pollTimer);
-        if (!resultScreen.classList.contains('hidden')) return;
-        showResult('pending');
-      }
-    } catch (e) {
-      if (attempts >= maxAttempts) {
-        clearInterval(pollTimer);
-        if (!resultScreen.classList.contains('hidden')) return;
-        showResult('pending');
-      }
+    const isDone = await checkStatusNow(shortId);
+    if (isDone || attempts >= maxAttempts) {
+      clearInterval(pollTimer);
     }
-  }, 2000);
+  }, 1000);
 }
 
 // --- RESULT SCREEN ---

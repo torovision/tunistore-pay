@@ -1108,15 +1108,24 @@ app.post('/api/resolve-link', async (req, res) => {
   }
 });
 
-// NEW: Check payment status
+// Check payment status
 app.get('/api/check-status/:shortId', async (req, res) => {
   const { shortId } = req.params;
   try {
     const r = await fetch(`https://api.kashy.tn/api/v1/payments/session/${shortId}`);
     if (!r.ok) return res.status(404).json({ error: 'Session introuvable.' });
     const data = await r.json();
+
+    const rawStatus = String(data.status || '').toUpperCase();
+    const isPaid = data.isPaid === true ||
+                   (data.totalCollected && data.totalCollected > 0) ||
+                   ['PAID', 'COMPLETED', 'SUCCESS', 'SETTLED', 'CLOSED', 'DONE'].includes(rawStatus);
+
+    const isFailed = ['FAILED', 'EXPIRED', 'CANCELLED', 'DECLINED', 'REJECTED'].includes(rawStatus);
+
     res.json({
-      status: data.status || 'UNKNOWN',
+      status: isPaid ? 'PAID' : (isFailed ? 'FAILED' : (data.status || 'PENDING')),
+      rawStatus: data.status,
       amount: data.amount || 0,
       shortId
     });
