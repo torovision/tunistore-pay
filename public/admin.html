@@ -621,6 +621,9 @@
               const img = document.getElementById('liveBrowserImg');
               if (img) img.src = data.image;
             }
+            if (data.hasToken || (data.tokenState && data.tokenState.status === 'connected')) {
+              updateTokenStatus();
+            }
             if (data.error) {
               const errMsg = document.getElementById('liveErrorMsg');
               if (errMsg) {

@@ -379,7 +379,7 @@ async function getPuppeteerPage() {
       } catch(e) {}
     });
 
-    await puppeteerPage.setUserAgent(
+    puppeteerPage.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
     );
     // Allow CSS & JS so Next.js UI renders completely; only block heavy media & analytics
@@ -387,6 +387,13 @@ async function getPuppeteerPage() {
     puppeteerPage.on('request', (req) => {
       const type = req.resourceType();
       const url = req.url();
+
+      // Auto-extract Authorization header sent in outgoing requests to Kashy API
+      const authHeader = req.headers()['authorization'] || req.headers()['Authorization'];
+      if (authHeader && authHeader.includes('Bearer eyJ')) {
+        handleNewTokenExtracted(authHeader, 'Entête Requête');
+      }
+
       if (type === 'media' || url.includes('google-analytics') || url.includes('hotjar') || url.includes('sentry.io')) {
         req.abort();
       } else {
@@ -394,17 +401,26 @@ async function getPuppeteerPage() {
       }
     });
 
-    // Capture Kashy auth API response errors
+    // Capture Kashy auth API response tokens and error messages
     puppeteerPage.on('response', async (res) => {
-      if (res.url().includes('api.kashy.tn/api/v1/auth/login')) {
+      const url = res.url();
+      if (url.includes('api.kashy.tn')) {
         try {
           const data = await res.json().catch(() => ({}));
-          if (!res.ok() && data.errors && data.errors.length > 0) {
+
+          // Intercept login/OTP error messages
+          if (url.includes('/api/v1/auth/login') && !res.ok() && data.errors && data.errors.length > 0) {
             const msg = data.errors[0].message || data.errors[0].code;
             console.log(`[Puppeteer Intercept Auth Error] ${msg}`);
             puppeteerState.lastError = msg;
             puppeteerState.status = 'error';
             puppeteerState.message = msg;
+          }
+
+          // Auto-intercept token inside API response JSON body
+          const rawToken = data.token || data.accessToken || data.bearer || data.access_token || (data.data && data.data.token);
+          if (rawToken && typeof rawToken === 'string' && rawToken.length > 50) {
+            handleNewTokenExtracted(rawToken, 'Réponse API');
           }
         } catch(e) {}
       }
@@ -412,6 +428,99 @@ async function getPuppeteerPage() {
   }
 
   return puppeteerPage;
+}
+
+/**
+ * Global helper to activate & persist a newly extracted Kashy token
+ */
+function handleNewTokenExtracted(rawOrFormattedToken, source = 'Auto') {
+  if (!rawOrFormattedToken || typeof rawOrFormattedToken !== 'string') return false;
+  const clean = rawOrFormattedToken.trim();
+  if (clean.length < 40) return false;
+  const formatted = clean.startsWith('Bearer ') ? clean : `Bearer ${clean}`;
+
+  if (!activeToken || activeToken !== formatted) {
+    activeToken = formatted;
+    process.env.KASHY_AUTH_TOKEN = formatted;
+    const phone = puppeteerState.phone || '+21653772707';
+    saveSession({ activeToken: formatted, phone });
+
+    const expMs = getTokenExpiry(formatted);
+    const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
+
+    puppeteerState = {
+      status: 'connected',
+      message: `Connecté à Kashy (${source}) ! (~${remainingMinutes || '?'} min)`,
+      phone,
+      lastUpdated: Date.now(),
+      lastRefresh: Date.now()
+    };
+
+    startAutoRefreshLoop(phone);
+    console.log(`⚡ [AutoExtract] Jeton Bearer Kashy extrait et activé (${source}) ! Valide ~${remainingMinutes} min.`);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Scan browser storage & cookies to auto-extract token
+ */
+async function autoExtractTokenFromPage(page) {
+  if (!page || !isPageOpen(page)) return null;
+  try {
+    const extractedToken = await page.evaluate(() => {
+      const keys = ['token', 'auth_token', 'bearer', 'access_token', 'accessToken', 'jwt', 'kashy_token'];
+      
+      for (const k of keys) {
+        const val = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if (val && val.length > 50) return val;
+      }
+
+      const scanStorage = (st) => {
+        for (let i = 0; i < st.length; i++) {
+          const k = st.key(i);
+          const val = st.getItem(k);
+          if (!val) continue;
+          if (val.includes('eyJ') && val.length > 50) {
+            if (val.startsWith('{')) {
+              try {
+                const parsed = JSON.parse(val);
+                for (const pk of keys) {
+                  if (parsed[pk] && typeof parsed[pk] === 'string' && parsed[pk].length > 50) return parsed[pk];
+                }
+              } catch(e) {}
+            } else {
+              return val;
+            }
+          }
+        }
+        return null;
+      };
+
+      const localVal = scanStorage(localStorage);
+      if (localVal) return localVal;
+
+      const sessionVal = scanStorage(sessionStorage);
+      if (sessionVal) return sessionVal;
+
+      if (document.cookie) {
+        const pairs = document.cookie.split(';');
+        for (const p of pairs) {
+          const [cK, cV] = p.trim().split('=');
+          if (cV && cV.includes('eyJ') && cV.length > 50) return decodeURIComponent(cV);
+        }
+      }
+
+      return null;
+    });
+
+    if (extractedToken) {
+      handleNewTokenExtracted(extractedToken, 'Stockage navigateur');
+      return extractedToken;
+    }
+  } catch(e) {}
+  return null;
 }
 
 /**
@@ -898,6 +1007,10 @@ app.get('/api/admin/browser/screenshot', async (req, res) => {
     if (!puppeteerPage || !isPageOpen(puppeteerPage)) {
       return res.status(404).json({ error: 'Page non active.' });
     }
+
+    // Auto-extract token from localStorage/cookies on every screenshot poll
+    await autoExtractTokenFromPage(puppeteerPage);
+
     const imageBuffer = await puppeteerPage.screenshot({ type: 'jpeg', quality: 65 });
     const base64 = imageBuffer.toString('base64');
     
@@ -907,6 +1020,8 @@ app.get('/api/admin/browser/screenshot', async (req, res) => {
     res.json({
       success: true,
       image: `data:image/jpeg;base64,${base64}`,
+      hasToken: !!activeToken,
+      tokenState: puppeteerState,
       error: lastErr || null
     });
   } catch (err) {
