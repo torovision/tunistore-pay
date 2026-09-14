@@ -6,11 +6,13 @@ import 'dotenv/config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 process.env.PUPPETEER_CACHE_DIR = join(__dirname, '.cache', 'puppeteer');
+const USER_DATA_DIR = join(__dirname, '.cache', 'user_data');
 const PORT = process.env.PORT || 3010;
 const LINKS_FILE = join(__dirname, 'links.json');
-let activeToken = process.env.KASHY_AUTH_TOKEN || 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTMxY2U3ZjliZTgyNTZjMzY1Y2JmZGQiLCJyb2xlIjoiY2xpZW50Iiwic3RhdHVzIjoidmVyaWZpZWQiLCJlbWFpbCI6ImNoaWhlYmVsb3VuaTZAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrMjE2NTM3NzI3MDciLCJpYXQiOjE3ODkzMTk2NTEsImV4cCI6MTc4OTMyMTQ1MX0.oDPeccCVmwGanTG3dwP9tDBFIuQbxhseATPzPkuzJbU';
+const SESSION_FILE = join(__dirname, 'session.json');
 
 function getTokenExpiry(token) {
+  if (!token) return null;
   try {
     const raw = token.replace('Bearer ', '').trim();
     const parts = raw.split('.');
@@ -21,6 +23,46 @@ function getTokenExpiry(token) {
   } catch (e) {}
   return null;
 }
+
+function saveSession(data = {}) {
+  try {
+    if (!fs.existsSync(join(__dirname, '.cache'))) {
+      fs.mkdirSync(join(__dirname, '.cache'), { recursive: true });
+    }
+    let existing = {};
+    if (fs.existsSync(SESSION_FILE)) {
+      try { existing = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8')); } catch (e) {}
+    }
+    const updated = {
+      ...existing,
+      ...data,
+      lastSaved: new Date().toISOString()
+    };
+    fs.writeFileSync(SESSION_FILE, JSON.stringify(updated, null, 2), 'utf8');
+    console.log('[Session] Saved session data to session.json');
+  } catch (e) {
+    console.error('[Session] Error saving session.json:', e.message);
+  }
+}
+
+function loadSession() {
+  try {
+    if (fs.existsSync(SESSION_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
+      if (data.activeToken) {
+        console.log('[Session] Restored activeToken from session.json');
+      }
+      return data;
+    }
+  } catch (e) {
+    console.error('[Session] Error loading session.json:', e.message);
+  }
+  return null;
+}
+
+const initialSession = loadSession();
+let activeToken = (initialSession && initialSession.activeToken) || process.env.KASHY_AUTH_TOKEN || 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTMxY2U3ZjliZTgyNTZjMzY1Y2JmZGQiLCJyb2xlIjoiY2xpZW50Iiwic3RhdHVzIjoidmVyaWZpZWQiLCJlbWFpbCI6ImNoaWhlYmVsb3VuaTZAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrMjE2NTM3NzI3MDciLCJpYXQiOjE3ODkzMTk2NTEsImV4cCI6MTc4OTMyMTQ1MX0.oDPeccCVmwGanTG3dwP9tDBFIuQbxhseATPzPkuzJbU';
+process.env.KASHY_AUTH_TOKEN = activeToken;
 
 const app = express();
 app.use(express.json());
@@ -136,6 +178,7 @@ app.post('/api/update-token', (req, res) => {
   const formattedToken = token.trim().startsWith('Bearer ') ? token.trim() : `Bearer ${token.trim()}`;
   activeToken = formattedToken;
   process.env.KASHY_AUTH_TOKEN = formattedToken;
+  saveSession({ activeToken: formattedToken });
   
   const expMs = getTokenExpiry(formattedToken);
   const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -241,6 +284,10 @@ async function getPuppeteerPage() {
     }
     const puppeteer = puppeteerModule.default || puppeteerModule;
 
+    if (!fs.existsSync(USER_DATA_DIR)) {
+      fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+    }
+
     const launchArgs = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -248,7 +295,6 @@ async function getPuppeteerPage() {
       '--disable-gpu',
       '--no-first-run',
       '--no-zygote',
-      '--single-process',
       '--disable-extensions'
     ];
 
@@ -272,10 +318,11 @@ async function getPuppeteerPage() {
           console.log(`[Puppeteer] Trying Chrome at: ${execPath}`);
           puppeteerBrowser = await puppeteer.launch({
             executablePath: execPath,
+            userDataDir: USER_DATA_DIR,
             headless: 'new',
             args: launchArgs
           });
-          console.log(`[Puppeteer] Chrome launched successfully from: ${execPath}`);
+          console.log(`[Puppeteer] Chrome launched successfully from: ${execPath} with persistent profile`);
           launched = true;
           break;
         } catch (e) {
@@ -289,10 +336,11 @@ async function getPuppeteerPage() {
         // Let Puppeteer find its own bundled Chrome
         console.log('[Puppeteer] Trying default bundled Chrome...');
         puppeteerBrowser = await puppeteer.launch({
+          userDataDir: USER_DATA_DIR,
           headless: 'new',
           args: launchArgs
         });
-        console.log('[Puppeteer] Default Chrome launched successfully.');
+        console.log('[Puppeteer] Default Chrome launched successfully with persistent profile.');
       } catch (err) {
         throw new Error(`Chrome introuvable sur le serveur. Assurez-vous que "npx puppeteer browsers install chrome" a été exécuté. (${err.message})`);
       }
@@ -390,6 +438,7 @@ function startAutoRefreshLoop(phone) {
           const formatted = freshToken.trim().startsWith('Bearer ') ? freshToken.trim() : `Bearer ${freshToken.trim()}`;
           activeToken = formatted;
           process.env.KASHY_AUTH_TOKEN = formatted;
+          saveSession({ activeToken: formatted, phone: phone || puppeteerState.phone });
           const expMs = getTokenExpiry(formatted);
           const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
           puppeteerState.status = 'connected';
@@ -421,6 +470,7 @@ function startAutoRefreshLoop(phone) {
           const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
           activeToken = formatted;
           process.env.KASHY_AUTH_TOKEN = formatted;
+          saveSession({ activeToken: formatted, phone: phone || puppeteerState.phone });
           const expMs = getTokenExpiry(formatted);
           const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
           puppeteerState.status = 'connected';
@@ -443,7 +493,7 @@ function startAutoRefreshLoop(phone) {
       puppeteerState.lastUpdated = Date.now();
       console.log('[Auto-Refresh] Token expired. Manual re-login required.');
     }
-  }, 25 * 60 * 1000); // Every 25 minutes
+  }, 10 * 60 * 1000); // Every 10 minutes
 }
 
 // Direct Kashy Login (Phone + Password/PIN) via API & Puppeteer fallback
@@ -477,6 +527,7 @@ app.post('/api/admin/kashy-login', async (req, res) => {
         const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
         activeToken = formatted;
         process.env.KASHY_AUTH_TOKEN = formatted;
+        saveSession({ activeToken: formatted, phone: cleanPhone });
 
         const expMs = getTokenExpiry(formatted);
         const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -583,6 +634,7 @@ app.post('/api/admin/kashy-login', async (req, res) => {
       const formatted = extractedToken.trim().startsWith('Bearer ') ? extractedToken.trim() : `Bearer ${extractedToken.trim()}`;
       activeToken = formatted;
       process.env.KASHY_AUTH_TOKEN = formatted;
+      saveSession({ activeToken: formatted, phone: cleanPhone });
 
       const expMs = getTokenExpiry(formatted);
       const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -640,6 +692,7 @@ app.post('/api/admin/kashy-submit-otp', async (req, res) => {
           const formatted = rawToken.trim().startsWith('Bearer ') ? rawToken.trim() : `Bearer ${rawToken.trim()}`;
           activeToken = formatted;
           process.env.KASHY_AUTH_TOKEN = formatted;
+          saveSession({ activeToken: formatted, phone: cleanPhone });
 
           const expMs = getTokenExpiry(formatted);
           const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -705,6 +758,7 @@ app.post('/api/admin/kashy-submit-otp', async (req, res) => {
       const formatted = extractedToken.trim().startsWith('Bearer ') ? extractedToken.trim() : `Bearer ${extractedToken.trim()}`;
       activeToken = formatted;
       process.env.KASHY_AUTH_TOKEN = formatted;
+      saveSession({ activeToken: formatted, phone: cleanPhone });
 
       const expMs = getTokenExpiry(formatted);
       const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -783,6 +837,7 @@ app.post('/api/admin/browser/interact', async (req, res) => {
       const formatted = extractedToken.trim().startsWith('Bearer ') ? extractedToken.trim() : `Bearer ${extractedToken.trim()}`;
       activeToken = formatted;
       process.env.KASHY_AUTH_TOKEN = formatted;
+      saveSession({ activeToken: formatted, phone: puppeteerState.phone });
 
       const expMs = getTokenExpiry(formatted);
       const remainingMinutes = expMs ? Math.max(0, Math.round((expMs - Date.now()) / 60000)) : null;
@@ -815,6 +870,26 @@ app.post('/api/admin/browser/interact', async (req, res) => {
     console.error('[LiveBrowser] Interact error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// Reset / Clear Kashy Session
+app.post('/api/admin/logout-session', async (req, res) => {
+  activeToken = '';
+  process.env.KASHY_AUTH_TOKEN = '';
+  puppeteerState = { status: 'idle', message: 'Session réinitialisée.', phone: null, lastUpdated: Date.now() };
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+  if (fs.existsSync(SESSION_FILE)) {
+    try { fs.unlinkSync(SESSION_FILE); } catch(e) {}
+  }
+  if (isBrowserConnected(puppeteerBrowser)) {
+    try { await puppeteerBrowser.close(); } catch(e) {}
+    puppeteerBrowser = null;
+    puppeteerPage = null;
+  }
+  res.json({ success: true, message: 'Session réinitialisée avec succès.' });
 });
 
 // Fast screenshot endpoint for live stream polling

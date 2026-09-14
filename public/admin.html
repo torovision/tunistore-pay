@@ -235,7 +235,10 @@
             <div class="session-subtitle" id="bannerSubtitle">Mise à jour automatique toutes les 60s</div>
           </div>
         </div>
-        <span class="session-badge" id="bannerTime">--</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="session-badge" id="bannerTime">--</span>
+          <button onclick="resetSession()" title="Réinitialiser la session enregistrée" style="background:transparent;border:1px solid var(--gray-300);color:var(--gray-600);padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">🗑️ Oublier Session</button>
+        </div>
       </div>
 
       <!-- Tab Navigation -->
@@ -498,6 +501,16 @@
           time.className = 'session-badge expired';
         }
       } catch (e) {}
+    }
+
+    async function resetSession() {
+      if (!confirm('Voulez-vous vraiment effacer et réinitialiser la session Kashy enregistrée ?')) return;
+      try {
+        const res = await fetch('/api/admin/logout-session', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message || 'Session réinitialisée.');
+        updateTokenStatus();
+      } catch(e) { alert('Erreur de réinitialisation'); }
     }
 
     // Direct Kashy Login Handler (Phone + PIN/Password)
