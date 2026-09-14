@@ -1283,13 +1283,34 @@ app.post('/api/create-link-by-amount', async (req, res) => {
 // NEW: Delete/Cancel payment link on Kashy Dashboard
 app.post('/api/cancel-payment', async (req, res) => {
   const { shortId, paymentId } = req.body;
-  const targetId = paymentId || shortId;
+  let targetId = paymentId || shortId;
 
   if (!targetId && !shortId) {
     return res.status(400).json({ error: 'ID de paiement manquant.' });
   }
 
-  console.log(`[CancelPayment] Request to delete link ${targetId} (shortId: ${shortId})...`);
+  console.log(`[CancelPayment] Request to delete link (shortId: ${shortId}, paymentId: ${paymentId})...`);
+
+  let candidates = [];
+  if (paymentId) candidates.push(paymentId);
+  if (shortId && shortId !== paymentId) candidates.push(shortId);
+
+  // If we only have shortId or targetId looks like a shortId (< 15 chars), resolve full Mongo ObjectId from session endpoint
+  if (shortId && (!paymentId || paymentId.length < 15)) {
+    try {
+      const sessRes = await fetch(`https://api.kashy.tn/api/v1/payments/session/${shortId}`);
+      if (sessRes.ok) {
+        const sessData = await sessRes.json();
+        const resolvedId = sessData.id || sessData._id || sessData.paymentId || (sessData.payment && (sessData.payment.id || sessData.payment._id));
+        if (resolvedId && !candidates.includes(resolvedId)) {
+          console.log(`[CancelPayment] Resolved shortId ${shortId} -> full paymentId ${resolvedId}`);
+          candidates.unshift(resolvedId); // Place full 24-hex ObjectId first
+        }
+      }
+    } catch (e) {
+      console.error('[CancelPayment] Error resolving session ID:', e.message);
+    }
+  }
 
   let deleted = false;
   let methodUsed = null;
@@ -1297,7 +1318,6 @@ app.post('/api/cancel-payment', async (req, res) => {
   // 1. Direct API Deletion
   if (activeToken) {
     const authHeader = activeToken.startsWith('Bearer ') ? activeToken : `Bearer ${activeToken}`;
-    const candidates = [targetId, shortId].filter(Boolean);
 
     for (const cid of candidates) {
       const urls = [
@@ -1312,7 +1332,10 @@ app.post('/api/cancel-payment', async (req, res) => {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': authHeader
+              'Accept': 'application/json',
+              'Accept-Language': 'en',
+              'Authorization': authHeader,
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
           });
           console.log(`[CancelPayment] DELETE ${url} -> Status ${delRes.status}`);
@@ -1332,18 +1355,16 @@ app.post('/api/cancel-payment', async (req, res) => {
   // 2. Puppeteer Browser Fallback Deletion
   if (!deleted && isPageOpen(puppeteerPage)) {
     try {
-      console.log(`[CancelPayment] Attempting Puppeteer browser deletion for ${targetId}...`);
-      const puppeteerRes = await puppeteerPage.evaluate(async (tid, sid) => {
+      console.log(`[CancelPayment] Attempting Puppeteer browser deletion for candidates:`, candidates);
+      const puppeteerRes = await puppeteerPage.evaluate(async (cList) => {
         const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || sessionStorage.getItem('token');
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'application/json', 'Accept-Language': 'en' };
         if (token) headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
 
-        const candidates = [tid, sid].filter(Boolean);
-        for (const cid of candidates) {
+        for (const cid of cList) {
           const urls = [
             `https://api.kashy.tn/api/v1/payments/${cid}`,
-            `https://api.kashy.tn/api/v1/payments/request/${cid}`,
-            `https://api.kashy.tn/api/v1/payments/link/${cid}`
+            `https://api.kashy.tn/api/v1/payments/request/${cid}`
           ];
           for (const u of urls) {
             try {
@@ -1353,7 +1374,7 @@ app.post('/api/cancel-payment', async (req, res) => {
           }
         }
         return false;
-      }, targetId, shortId);
+      }, candidates);
 
       if (puppeteerRes) {
         deleted = true;
@@ -1365,11 +1386,11 @@ app.post('/api/cancel-payment', async (req, res) => {
   }
 
   if (deleted) {
-    console.log(`⚡ [CancelPayment] Lien de paiement Kashy ${targetId} supprimé avec succès (${methodUsed}) !`);
+    console.log(`⚡ [CancelPayment] Lien de paiement Kashy supprimé avec succès (${methodUsed}) !`);
     res.json({ success: true, message: 'Lien de paiement supprimé du tableau de bord Kashy.', method: methodUsed });
   } else {
-    console.log(`⚠️ [CancelPayment] Tentative de suppression du lien ${targetId} effectuée.`);
-    res.json({ success: false, message: 'Fermeture enregistrée.' });
+    console.log(`⚠️ [CancelPayment] Tentative de suppression des liens ${candidates.join(', ')} effectuée.`);
+    res.json({ success: false, message: 'Tentative de suppression effectuée.' });
   }
 });
 
