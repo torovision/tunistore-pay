@@ -464,20 +464,45 @@ payIframe.addEventListener('error', () => {
   }
 });
 
-btnCloseModal.addEventListener('click', () => {
+function handleUserModalClose() {
   const shortIdToCancel = currentShortId;
   const paymentIdToCancel = currentPaymentId;
 
   closePayModalSilently();
 
   // Automatically delete/cancel payment link on Kashy Dashboard when modal is closed
-  if (shortIdToCancel) {
-    console.log('[Modal Close] Cancelling & deleting Kashy link:', shortIdToCancel, paymentIdToCancel);
+  if (shortIdToCancel || paymentIdToCancel) {
+    console.log('[Modal Close] ClicToPay box closed by user — requesting link deletion on Kashy:', shortIdToCancel, paymentIdToCancel);
     fetch('/api/cancel-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shortId: shortIdToCancel, paymentId: paymentIdToCancel })
+      body: JSON.stringify({ shortId: shortIdToCancel, paymentId: paymentIdToCancel }),
+      keepalive: true
     }).catch(() => {});
+  }
+}
+
+// 1. Close button click ('X')
+btnCloseModal.addEventListener('click', handleUserModalClose);
+
+// 2. Click outside modal box (backdrop overlay click)
+payModal.addEventListener('click', (e) => {
+  if (e.target === payModal) {
+    handleUserModalClose();
+  }
+});
+
+// 3. Escape key press
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && payModal.classList.contains('active')) {
+    handleUserModalClose();
+  }
+});
+
+// 4. Tab close / page unload while ClicToPay modal is open
+window.addEventListener('pagehide', () => {
+  if (payModal.classList.contains('active') && (currentShortId || currentPaymentId)) {
+    navigator.sendBeacon('/api/cancel-payment', JSON.stringify({ shortId: currentShortId, paymentId: currentPaymentId }));
   }
 });
 
